@@ -1,56 +1,183 @@
-# Welcome to your Expo app 👋
+<p align="center">
+  <img src="./assets/images/icon.png" width="96" height="96" alt="Finale icon" />
+</p>
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<h1 align="center">Finale</h1>
 
-## Get started
+<p align="center">A TV tracker for people who binge: know if a show was cancelled, and only hear about a season once it's fully out.</p>
 
-1. Install dependencies
+## What it does
+
+- **Search with endings up front**: every search result says whether the show is returning, ended,
+  or was cancelled, so you know before you start whether the story gets an ending.
+- **Show page**: status, a "Cancelled after 2 seasons" / "Ended after 5 seasons" callout, and the
+  state of the latest season: complete (with total binge time), airing ("4 of 10 out · finale
+  Oct 12"), or upcoming.
+- **Watchlist**: follow shows and see them grouped into *Ready to binge*, *Season airing*, and
+  *Waiting for new episodes*. Refreshed from TMDB on launch and on pull-to-refresh.
+- Local-only persistence (no account, no server of our own), light/dark mode, one Material 3
+  palette (amber, generated from a single seed color) driving both Paper components and Tailwind
+  classes.
+
+Planned next: "season complete" notifications from a daily background check, marking seasons as
+watched, and marathon mode (a resume bookmark plus a runtime planner).
+
+## Getting started
+
+1. Create a free account at [themoviedb.org](https://www.themoviedb.org/signup), then go to
+   Settings → API and copy the **API Read Access Token** (the long one, not the short API key).
+2. Put it in `.env.local` (gitignored):
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   and set `TMDB_TOKEN=<your token>`.
+3. Install and run:
 
    ```bash
    npm install
+   npm start
    ```
 
-2. Start the app
+   Scan the QR code with [Expo Go](https://expo.dev/go) on your phone, or `npm run web` for a
+   browser.
 
-   ```bash
-   npx expo start
-   ```
+After adding or changing the token, restart with `npx expo start --clear`. Metro caches the app
+config, so a plain restart can keep running without it.
 
-In the output, you'll find options to open the app in a
+## The TMDB token
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+The token is never shipped in plain text. [`app.config.js`](app.config.js) reads `TMDB_TOKEN` at
+build time, XORs it with a random per-build key, and stores both in the app config.
+[`src/lib/token.ts`](src/lib/token.ts) decodes it at runtime via `expo-constants`. This stops
+automated scanners that grep published APKs for key patterns (a TMDB token is a JWT starting with
+`eyJ`). It does **not** stop a determined person: the token is still sent in the `Authorization`
+header on every request, so intercepting the app's traffic reveals it.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+That's acceptable for a free, read-only token during personal use and a closed test. Before a
+public release, move TMDB calls behind a small proxy (e.g. a Cloudflare Worker holding the token,
+allowing only the search/show/season endpoints, with caching and per-IP rate limits), so the app
+never holds the token at all.
 
-## Get a fresh project
+## Scripts
 
-When you're ready, run:
+| Command                   | What it does                                                |
+| ------------------------- | ----------------------------------------------------------- |
+| `npm start`               | Start the Metro bundler / dev server                        |
+| `npm run web`             | Run in a browser via Expo web                               |
+| `npm run ios` / `android` | Run on a simulator/emulator (needs Xcode / Android Studio)  |
+| `npm test`                | Run the Jest test suite                                     |
+| `npm run test:watch`      | Jest in watch mode                                          |
+| `npm run typecheck`       | `tsc --noEmit`                                              |
+| `npm run lint`            | ESLint via `expo lint`                                      |
 
-```bash
-npm run reset-project
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) mirrors Punch's:
+
+- **test**: typecheck, lint, then the Jest suite, on every push to `main` and every pull request.
+- **build-android**: an [EAS Build](https://docs.expo.dev/build/introduction/), gated on `test`.
+  Manual only: Actions tab → CI → Run workflow, picking `preview` (installable APK) or
+  `production` (Play Store `.aab`).
+
+One-time setup for the build job:
+
+1. `npx eas-cli@latest login`, then `npx eas-cli@latest init` from the project root (writes
+   `extra.eas.projectId` and `owner` into `app.json`).
+2. Add an `EXPO_TOKEN` secret (from [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens))
+   under the repo's Settings → Secrets and variables → Actions.
+3. Add `TMDB_TOKEN` to the `preview` and `production` EAS environments
+   (`npx eas-cli@latest env:create`, visibility `secret`), since builds don't read `.env.local`.
+
+## Tech stack
+
+- [Expo](https://expo.dev) / [Expo Router](https://docs.expo.dev/router/introduction/)
+- [React Native Paper](https://callstack.github.io/react-native-paper/) (Material Design 3) laid out
+  with [NativeWind](https://www.nativewind.dev/), both driven by
+  [`src/theme/tokens.js`](src/theme/tokens.js)
+- [Zustand](https://zustand.docs.pmnd.rs/) persisted to AsyncStorage as a single JSON blob
+- [TMDB](https://developer.themoviedb.org/) for show data
+- [Jest](https://jestjs.io/) + [React Native Testing Library](https://callstack.github.io/react-native-testing-library/)
+  via `jest-expo`
+
+## Project structure
+
+```
+assets/source/    icon generator (the PNGs in assets/images are its output)
+store/play/       Play Store listing copy, feature graphic, 512px icon, privacy policy page
+src/
+  app/            expo-router screens: watchlist, search, show detail
+  app-tests/      tests for the screens above
+  components/     ShowRow, Poster, StatusChip, EmptyState, MissingTokenBanner
+  lib/            TMDB client, token decoding, show/season status rules, AsyncStorage I/O, types
+  store/          the zustand watchlist store
+  theme/          MD3 + Tailwind tokens, the Paper theme, NativeWind interop
+  test-utils/     render wrapper and TMDB fixtures
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## How season status works
 
-### Other setup steps
+For each show the app picks the current season (the season of the next announced episode, else
+of the last aired one) and loads its episode list. See [`src/lib/shows.ts`](src/lib/shows.ts):
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- **Complete**: every listed episode has aired and TMDB announces no further episode in that
+  season.
+- **Airing**: some episodes have aired; the finale date is the last listed episode's air date when
+  known.
+- **Upcoming**: nothing has aired yet.
 
-## Learn more
+Each followed show stores its last snapshot, so the watchlist works offline and a failed refresh
+keeps the previous data.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Assets
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The app icon is a TV with a checkmark on the screen (a season that's done), gold (`#FFB956`) on
+near-black (`#1F1B16`). Everything is drawn as SVG in code and rasterized with
+[`sharp`](https://sharp.pixelplumbing.com/), so it's reproducible from the command line:
 
-## Join the community
+```bash
+npm install --no-save sharp
+node assets/source/render-icons.js
+node store/play/render-feature-graphic.js
+```
 
-Join our community of developers creating universal apps.
+`render-icons.js` writes the main icon, favicon, splash glyph, the Android adaptive icon's
+foreground and monochrome (themed icon) layers, and `store/play/icon-512.png`. The adaptive layers
+are scaled down so the glyph stays inside Android's 66dp safe zone under circular masks.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Data safety
+
+There's no account and no backend of ours. The watchlist lives in local AsyncStorage under
+`finale:v1`, and the app opts in to the OS's own device backup, same as Punch: Android follows
+`android:allowBackup` (set to `true` in `app.json`), and on iOS
+`RCTAsyncStorageExcludeFromBackup: false` overrides the library's default of excluding itself.
+
+Unlike Punch, the app does send data off the device: search text, show IDs and poster requests go
+straight to TMDB. That's disclosed in [`PRIVACY.md`](PRIVACY.md) and in the Play data safety
+answers in [`store/play/listing.md`](store/play/listing.md).
+
+## Publishing
+
+- **Before any public release**: move TMDB behind a proxy (see [The TMDB token](#the-tmdb-token)),
+  then update `PRIVACY.md` and the data safety answers to match.
+- **Privacy policy URL**: [`PRIVACY.md`](PRIVACY.md) is the copy of record; publish
+  [`store/play/privacy-policy.html`](store/play/privacy-policy.html) somewhere public and use that
+  URL in Play Console.
+- **Android permissions**: as with Punch, `android.blockedPermissions` strips the storage
+  permissions `expo-file-system` declares by default; `INTERNET` is the only one the app needs.
+- **R8 minification** is on for release builds via `expo-build-properties`. Test a `preview` build
+  on a device before shipping `production`.
+- **Store listing**: copy, assets and remaining to-dos (screenshots) are in
+  [`store/play/listing.md`](store/play/listing.md).
+- **Build and submit**: `eas build --profile production --platform android`, then
+  `eas submit --platform android`. A new personal Play developer account needs a closed test with
+  12 testers for 14 days before production.
+
+## Attribution
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+## License
+
+[MIT](LICENSE)

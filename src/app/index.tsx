@@ -1,98 +1,75 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { RefreshControl, SectionList, View } from 'react-native';
+import { Appbar, Text, useTheme } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { EmptyState } from '@/components/EmptyState';
+import { MissingTokenBanner } from '@/components/MissingTokenBanner';
+import { ShowRow } from '@/components/ShowRow';
+import { seasonSummary, watchlistGroup, type WatchlistGroup } from '@/lib/shows';
+import type { FollowedShow } from '@/lib/types';
+import { useWatchlist } from '@/store/useWatchlist';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+const GROUPS: { key: WatchlistGroup; title: string }[] = [
+  { key: 'ready', title: 'Ready to binge' },
+  { key: 'airing', title: 'Season airing' },
+  { key: 'waiting', title: 'Waiting for new episodes' },
+];
+
+export default function WatchlistScreen() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const shows = useWatchlist((state) => state.shows);
+  const refreshing = useWatchlist((state) => state.refreshing);
+  const refreshAll = useWatchlist((state) => state.refreshAll);
+
+  const sections = GROUPS.map((group) => ({
+    key: group.key,
+    title: group.title,
+    data: shows
+      .filter((show) => watchlistGroup(show.snapshot.latestSeason) === group.key)
+      .sort((a, b) => a.snapshot.name.localeCompare(b.snapshot.name)),
+  })).filter((section) => section.data.length > 0);
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+      <Appbar.Header>
+        <Appbar.Content title="Watchlist" />
+        <Appbar.Action icon="magnify" accessibilityLabel="Search shows" onPress={() => router.push('/search')} />
+      </Appbar.Header>
+      <MissingTokenBanner />
+
+      {shows.length === 0 ? (
+        <EmptyState
+          title="Nothing followed yet"
+          message="Search for a show to see if it's cancelled, and follow it to know when a season is ready to binge."
+          actionLabel="Search shows"
+          onAction={() => router.push('/search')}
+        />
+      ) : (
+        <SectionList<FollowedShow>
+          sections={sections}
+          keyExtractor={(show) => String(show.id)}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} />}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => (
+            <Text variant="titleSmall" className="px-md pb-xs pt-md" style={{ color: theme.colors.primary }}>
+              {section.title}
+            </Text>
+          )}
+          renderItem={({ item }) => (
+            <ShowRow
+              name={item.snapshot.name}
+              year={item.snapshot.firstAirYear}
+              posterPath={item.snapshot.posterPath}
+              status={item.snapshot.status}
+              detail={seasonSummary(item.snapshot.latestSeason)}
+              onPress={() => router.push(`/show/${item.id}`)}
+            />
+          )}
+        />
+      )}
+    </View>
   );
 }
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
