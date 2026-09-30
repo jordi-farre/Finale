@@ -49,6 +49,6 @@ describe('search', () => {
     searchShowsMock.mockRejectedValue(new Error('offline'));
     await render(<SearchScreen />);
     await typeQuery('firefly');
-    expect(await screen.findByText(/Couldn't reach TMDB/)).toBeOnTheScreen();
+    expect(await screen.findByText(/Couldn't load shows/)).toBeOnTheScreen();
   });
 });

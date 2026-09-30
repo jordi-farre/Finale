@@ -72,7 +72,7 @@ export default function SearchScreen() {
       {loading && results.length === 0 ? <ActivityIndicator className="mt-lg" /> : null}
       {error ? (
         <Text variant="bodyMedium" className="px-md" style={{ color: theme.colors.error }}>
-          Couldn&apos;t reach TMDB. Check your connection and try again.
+          Couldn&apos;t load shows. Check your connection and try again.
         </Text>
       ) : null}
 

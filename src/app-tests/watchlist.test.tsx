@@ -51,10 +51,31 @@ describe('watchlist', () => {
     expect(router.push).toHaveBeenCalledWith('/show/42');
   });
 
-  it('explains how to add a TMDB token when it is missing', async () => {
+  it('tells a developer how to add a missing TMDB token', async () => {
     jest.mocked(readTmdbToken).mockReturnValue(null);
     useWatchlist.setState({ shows: [], hydrated: true });
     await render(<WatchlistScreen />);
-    expect(screen.getByText(/No TMDB token found/)).toBeOnTheScreen();
+    expect(screen.getByText(/Add TMDB_TOKEN to .env.local/)).toBeOnTheScreen();
+  });
+
+  describe('in a release build', () => {
+    const runtime = globalThis as unknown as { __DEV__: boolean };
+    const devFlag = runtime.__DEV__;
+
+    beforeEach(() => {
+      runtime.__DEV__ = false;
+    });
+
+    afterEach(() => {
+      runtime.__DEV__ = devFlag;
+    });
+
+    it('shows users a plain message instead of setup instructions', async () => {
+      jest.mocked(readTmdbToken).mockReturnValue(null);
+      useWatchlist.setState({ shows: [], hydrated: true });
+      await render(<WatchlistScreen />);
+      expect(screen.getByText("Show info isn't available in this version of Finale. Please update the app.")).toBeOnTheScreen();
+      expect(screen.queryByText(/TMDB_TOKEN/)).toBeNull();
+    });
   });
 });

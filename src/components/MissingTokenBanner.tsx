@@ -3,6 +3,9 @@ import { Icon, Text, useTheme } from 'react-native-paper';
 
 import { hasTmdbToken } from '@/lib/tmdb';
 
+const DEVELOPER_MESSAGE = 'No TMDB token found. Add TMDB_TOKEN to .env.local and restart with npx expo start --clear.';
+const USER_MESSAGE = "Show info isn't available in this version of Finale. Please update the app.";
+
 export function MissingTokenBanner() {
   const theme = useTheme();
   if (hasTmdbToken()) return null;
@@ -10,9 +13,9 @@ export function MissingTokenBanner() {
     <View
       className="mx-md mb-sm flex-row items-center gap-sm rounded-md p-md"
       style={{ backgroundColor: theme.colors.errorContainer }}>
-      <Icon source="key-alert-outline" size={24} color={theme.colors.onErrorContainer} />
+      <Icon source={__DEV__ ? 'key-alert-outline' : 'alert-circle-outline'} size={24} color={theme.colors.onErrorContainer} />
       <Text variant="bodyMedium" className="flex-1" style={{ color: theme.colors.onErrorContainer }}>
-        No TMDB token found. Add TMDB_TOKEN to .env.local and restart with npx expo start --clear.
+        {__DEV__ ? DEVELOPER_MESSAGE : USER_MESSAGE}
       </Text>
     </View>
   );
