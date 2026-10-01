@@ -23,11 +23,21 @@ export function showDetails(overrides: Partial<TmdbShowDetails> = {}): TmdbShowD
   };
 }
 
-export function seasonDetails(seasonNumber: number, airDates: (string | null)[], runtime: number | null = 50): TmdbSeasonDetails {
+export function seasonDetails(
+  seasonNumber: number,
+  airDates: (string | null)[],
+  runtime: number | null = 50,
+  lastEpisodeType?: string,
+): TmdbSeasonDetails {
   return {
     season_number: seasonNumber,
     air_date: airDates[0] ?? null,
-    episodes: airDates.map((air_date, index) => ({ episode_number: index + 1, air_date, runtime })),
+    episodes: airDates.map((air_date, index) => ({
+      episode_number: index + 1,
+      air_date,
+      runtime,
+      episode_type: index === airDates.length - 1 && lastEpisodeType ? lastEpisodeType : 'standard',
+    })),
   };
 }
 

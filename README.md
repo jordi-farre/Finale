@@ -130,10 +130,15 @@ of the last aired one) and loads its episode list. Earlier seasons count as comp
 first air date has passed, later ones as upcoming; their binge time is estimated from TMDB's
 typical episode length. See [`src/lib/shows.ts`](src/lib/shows.ts). For the current season:
 
-- **Complete**: every listed episode has aired and TMDB announces no further episode in that
-  season.
-- **Airing**: some episodes have aired; the finale date is the last listed episode's air date when
-  known.
+- **Complete**: every listed episode has aired, TMDB announces no further episode in that season,
+  and there's a positive sign it's over: the last episode is marked as the season finale, the show
+  has ended or been cancelled, the whole season came out within two days (a streaming drop), or
+  nothing new has aired for three weeks. Without that last condition, a weekly show whose next
+  episodes TMDB hasn't added yet (common with long-running anime like One Piece) would look done
+  after every episode.
+- **Airing**: some episodes have aired and more are listed or likely; the finale date is the last
+  listed episode's air date when known. A last episode marked "mid-season finale" keeps the season
+  airing through the break.
 - **Upcoming**: nothing has aired yet.
 
 Each followed show stores its last snapshot, so the watchlist works offline and a failed refresh

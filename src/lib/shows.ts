@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns';
+import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 
 import type { TmdbSeasonDetails, TmdbShowDetails } from '@/lib/tmdb';
 import type { FollowedShow, SeasonInfo, SeasonState, ShowSnapshot, ShowStatus } from '@/lib/types';
@@ -51,9 +51,30 @@ export function currentSeasonNumber(details: Pick<TmdbShowDetails, 'seasons' | '
   return Math.max(...regular.map((season) => season.season_number));
 }
 
+const QUIET_DAYS_BEFORE_COMPLETE = 21;
+const DROP_SPAN_DAYS = 2;
+
+function daysBetween(from: string, to: string): number {
+  return differenceInCalendarDays(parseISO(to), parseISO(from));
+}
+
+function looksFinished(
+  episodes: TmdbSeasonDetails['episodes'],
+  status: ShowStatus,
+  today: string,
+): boolean {
+  if (status === 'ended' || status === 'cancelled') return true;
+  const last = episodes[episodes.length - 1];
+  if (last.episode_type === 'mid_season') return false;
+  if (last.episode_type === 'finale') return true;
+  const first = episodes[0];
+  if (first.air_date && last.air_date && daysBetween(first.air_date, last.air_date) <= DROP_SPAN_DAYS) return true;
+  return last.air_date !== null && daysBetween(last.air_date, today) > QUIET_DAYS_BEFORE_COMPLETE;
+}
+
 export function seasonState(
   season: TmdbSeasonDetails | null,
-  details: Pick<TmdbShowDetails, 'next_episode_to_air' | 'episode_run_time'>,
+  details: Pick<TmdbShowDetails, 'next_episode_to_air' | 'episode_run_time' | 'status'>,
   now: Date = new Date(),
 ): SeasonState {
   if (!season) return { kind: 'none' };
@@ -68,7 +89,11 @@ export function seasonState(
 
   const moreAnnouncedThisSeason = details.next_episode_to_air?.season_number === seasonNumber;
 
-  if (aired.length === episodes.length && !moreAnnouncedThisSeason) {
+  if (
+    aired.length === episodes.length &&
+    !moreAnnouncedThisSeason &&
+    looksFinished(episodes, mapStatus(details.status), today)
+  ) {
     return {
       kind: 'complete',
       seasonNumber,

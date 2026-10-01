@@ -52,16 +52,44 @@ describe('currentSeasonNumber', () => {
 });
 
 describe('seasonState', () => {
-  const details = { next_episode_to_air: null, episode_run_time: [45] };
+  const details = { next_episode_to_air: null, episode_run_time: [45], status: 'Returning Series' };
 
-  it('is complete when every episode has aired and nothing more is announced', () => {
-    const state = seasonState(seasonDetails(2, ['2026-09-01', '2026-09-08', '2026-09-15']), details, NOW);
+  it('is complete when the last episode is marked as the finale', () => {
+    const state = seasonState(seasonDetails(2, ['2026-09-01', '2026-09-08', '2026-09-15'], 50, 'finale'), details, NOW);
     expect(state).toEqual({ kind: 'complete', seasonNumber: 2, episodeCount: 3, runtimeMinutes: 150, completedOn: '2026-09-15' });
   });
 
-  it('counts the finale airing today as aired', () => {
-    const state = seasonState(seasonDetails(2, ['2026-09-23', '2026-09-30']), details, NOW);
-    expect(state.kind).toBe('complete');
+  it('counts a finale airing today as aired', () => {
+    expect(seasonState(seasonDetails(2, ['2026-09-23', '2026-09-30'], 50, 'finale'), details, NOW).kind).toBe('complete');
+  });
+
+  it('is complete when the whole season dropped at once', () => {
+    expect(seasonState(seasonDetails(2, ['2026-09-26', '2026-09-26', '2026-09-26']), details, NOW).kind).toBe('complete');
+  });
+
+  it('is complete once a season has been quiet for three weeks', () => {
+    expect(seasonState(seasonDetails(2, ['2026-08-01', '2026-08-08']), details, NOW).kind).toBe('complete');
+  });
+
+  it('is complete when the show has ended, whatever the episode labels say', () => {
+    const ended = { ...details, status: 'Ended' };
+    expect(seasonState(seasonDetails(2, ['2026-09-16', '2026-09-23'], 50, 'mid_season'), ended, NOW).kind).toBe('complete');
+  });
+
+  it('stays airing when every listed episode is out but nothing says the season is over, as with One Piece', () => {
+    const weekly = ['2026-09-06', '2026-09-13', '2026-09-20', '2026-09-27'];
+    expect(seasonState(seasonDetails(23, weekly), details, NOW)).toEqual({
+      kind: 'airing',
+      seasonNumber: 23,
+      airedCount: 4,
+      episodeCount: null,
+      finaleDate: null,
+    });
+  });
+
+  it('stays airing through a mid-season break, however long', () => {
+    const state = seasonState(seasonDetails(2, ['2026-05-01', '2026-05-08'], 50, 'mid_season'), details, NOW);
+    expect(state.kind).toBe('airing');
   });
 
   it('uses the show runtime when an episode has none', () => {
@@ -70,7 +98,7 @@ describe('seasonState', () => {
   });
 
   it('leaves runtime unknown when neither episode nor show runtime is known', () => {
-    const state = seasonState(seasonDetails(1, ['2026-01-01'], null), { next_episode_to_air: null, episode_run_time: [] }, NOW);
+    const state = seasonState(seasonDetails(1, ['2026-01-01'], null), { ...details, episode_run_time: [] }, NOW);
     expect(state).toMatchObject({ kind: 'complete', runtimeMinutes: null });
   });
 
@@ -84,8 +112,9 @@ describe('seasonState', () => {
     expect(state).toMatchObject({ kind: 'airing', airedCount: 1, episodeCount: 2, finaleDate: null });
   });
 
-  it('is still airing when TMDB lists only aired episodes but announces another one this season', () => {
-    const state = seasonState(seasonDetails(3, ['2026-09-16', '2026-09-23']), { next_episode_to_air: { season_number: 3, episode_number: 3, air_date: null }, episode_run_time: [] }, NOW);
+  it('is still airing when another episode is announced this season, even after a finale label', () => {
+    const announced = { ...details, next_episode_to_air: { season_number: 3, episode_number: 3, air_date: null } };
+    const state = seasonState(seasonDetails(3, ['2026-09-16', '2026-09-23'], 50, 'finale'), announced, NOW);
     expect(state).toEqual({ kind: 'airing', seasonNumber: 3, airedCount: 2, episodeCount: null, finaleDate: null });
   });
 

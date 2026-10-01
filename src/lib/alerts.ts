@@ -71,5 +71,7 @@ export function pendingAlerts(snapshot: ShowSnapshot, notified: string[], now: D
 }
 
 export function mergeNotified(notified: string[], snapshot: Pick<ShowSnapshot, 'status' | 'latestSeason'>): string[] {
-  return Array.from(new Set([...notified, ...alertKeys(snapshot)]));
+  const latest = snapshot.latestSeason;
+  const reopened = latest.kind === 'airing' ? `complete:${latest.seasonNumber}` : null;
+  return Array.from(new Set([...notified, ...alertKeys(snapshot)])).filter((key) => key !== reopened);
 }

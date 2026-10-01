@@ -61,6 +61,14 @@ describe('pendingAlerts', () => {
     ]);
   });
 
+  it('re-arms the completion alert when a season turns out to still be airing', () => {
+    const reopened = mergeNotified(mergeNotified([], complete), airing);
+    expect(reopened).toEqual(['premiere:3']);
+    expect(pendingAlerts(complete, reopened, NOW).map((alert) => alert.title)).toEqual([
+      'The Bear: Season 3 is complete',
+    ]);
+  });
+
   it('never repeats an alert that was already sent', () => {
     expect(pendingAlerts(complete, mergeNotified([], complete), NOW)).toEqual([]);
   });
