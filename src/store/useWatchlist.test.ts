@@ -4,7 +4,7 @@ import { presentAlerts } from '@/lib/notifications';
 import { STORAGE_KEY_FOR_TESTS } from '@/lib/storage';
 import { fetchSnapshot } from '@/lib/tmdb';
 import { useWatchlist } from '@/store/useWatchlist';
-import { snapshot } from '@/test-utils/fixtures';
+import { season, snapshot } from '@/test-utils/fixtures';
 
 jest.mock('@/lib/tmdb', () => ({ ...jest.requireActual('@/lib/tmdb'), fetchSnapshot: jest.fn() }));
 jest.mock('@/lib/notifications', () => ({ presentAlerts: jest.fn().mockResolvedValue(undefined) }));
@@ -67,13 +67,29 @@ describe('useWatchlist', () => {
     expect(useWatchlist.getState().shows[0].notified).toEqual(['premiere:2', 'complete:2']);
   });
 
-  it('marks and unmarks seasons as seen', () => {
+  it('marking a season also marks every earlier complete season', () => {
+    useWatchlist.getState().follow(
+      snapshot({
+        latestSeason: { kind: 'airing', seasonNumber: 5, airedCount: 1, episodeCount: 8, finaleDate: null },
+        seasons: [season(1), season(2), season(3), season(4), season(5, { state: 'airing' })],
+      }),
+    );
+    expect(useWatchlist.getState().setSeen(1, 3, true)).toEqual({ previous: [], next: [1, 2, 3] });
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1, 2, 3]);
+  });
+
+  it('unmarking a season leaves the others alone', () => {
     useWatchlist.getState().follow(snapshot());
     useWatchlist.getState().setSeen(1, 2, true);
-    useWatchlist.getState().setSeen(1, 1, true);
-    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1, 2]);
-    useWatchlist.getState().setSeen(1, 2, false);
-    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1]);
+    useWatchlist.getState().setSeen(1, 1, false);
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([2]);
+  });
+
+  it('restores a previous set of seen seasons', () => {
+    useWatchlist.getState().follow(snapshot());
+    const { previous } = useWatchlist.getState().setSeen(1, 2, true);
+    useWatchlist.getState().restoreSeen(1, previous);
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([]);
   });
 
   it('notifies once when a followed season starts and once when it completes', async () => {

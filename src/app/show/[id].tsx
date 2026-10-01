@@ -22,12 +22,13 @@ export default function ShowScreen() {
   const follow = useWatchlist((state) => state.follow);
   const unfollow = useWatchlist((state) => state.unfollow);
   const setSeen = useWatchlist((state) => state.setSeen);
+  const restoreSeen = useWatchlist((state) => state.restoreSeen);
   const updateSnapshot = useWatchlist((state) => state.updateSnapshot);
   const notifications = useNotificationPermission();
 
   const [fetched, setFetched] = useState<ShowSnapshot | null>(null);
   const [error, setError] = useState(false);
-  const [autoFollowed, setAutoFollowed] = useState(false);
+  const [notice, setNotice] = useState<{ message: string; undo: () => void } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -55,11 +56,18 @@ export default function ShowScreen() {
   }
 
   function toggleSeen(current: ShowSnapshot, seasonNumber: number) {
+    if (!following) startFollowing(current);
+    const { previous, next } = setSeen(current.id, seasonNumber, !seenSeasons.includes(seasonNumber));
+    const added = next.length - previous.length;
+    const marked = added > 1 ? `${added} seasons marked as seen` : null;
     if (!following) {
-      startFollowing(current);
-      setAutoFollowed(true);
+      setNotice({
+        message: marked ? `Now following ${current.name} · ${marked}` : `Now following ${current.name}`,
+        undo: () => unfollow(current.id),
+      });
+    } else if (marked) {
+      setNotice({ message: marked, undo: () => restoreSeen(current.id, previous) });
     }
-    setSeen(current.id, seasonNumber, !seenSeasons.includes(seasonNumber));
   }
 
   if (!snapshot) {
@@ -175,17 +183,17 @@ export default function ShowScreen() {
       </ScrollView>
 
       <Snackbar
-        visible={autoFollowed && following}
-        onDismiss={() => setAutoFollowed(false)}
+        visible={notice !== null && following}
+        onDismiss={() => setNotice(null)}
         duration={5000}
         action={{
           label: 'Undo',
           onPress: () => {
-            unfollow(snapshot.id);
-            setAutoFollowed(false);
+            notice?.undo();
+            setNotice(null);
           },
         }}>
-        {`Now following ${snapshot.name}`}
+        {notice?.message ?? ''}
       </Snackbar>
     </View>
   );

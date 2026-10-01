@@ -72,7 +72,23 @@ describe('show detail', () => {
     await render(<ShowScreen />);
     await fireEvent.press(await screen.findByLabelText('Season 1, not seen'));
     expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1]);
+    expect(screen.queryByText(/marked as seen/)).toBeNull();
     await fireEvent.press(screen.getByLabelText('Season 1, seen'));
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([]);
+  });
+
+  it('marks earlier seasons too, with an undo', async () => {
+    const show = snapshot({
+      latestSeason: { kind: 'complete', seasonNumber: 3, episodeCount: 10, runtimeMinutes: null, completedOn: null },
+      seasons: [season(1), season(2), season(3)],
+    });
+    useWatchlist.setState({ hydrated: true, shows: [followed(show)] });
+    fetchSnapshotMock.mockResolvedValue(show);
+    await render(<ShowScreen />);
+    await fireEvent.press(await screen.findByLabelText('Season 3, not seen'));
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1, 2, 3]);
+    expect(screen.getByText('3 seasons marked as seen')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText('Undo'));
     expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([]);
   });
 
@@ -90,9 +106,9 @@ describe('show detail', () => {
   it('follows the show when you mark a season seen, with an undo', async () => {
     fetchSnapshotMock.mockResolvedValue(snapshot());
     await render(<ShowScreen />);
-    await fireEvent.press(await screen.findByLabelText('Season 1, not seen'));
-    expect(useWatchlist.getState().shows[0]).toMatchObject({ id: 1, seenSeasons: [1] });
-    expect(screen.getByText('Now following Severance')).toBeOnTheScreen();
+    await fireEvent.press(await screen.findByLabelText('Season 2, not seen'));
+    expect(useWatchlist.getState().shows[0]).toMatchObject({ id: 1, seenSeasons: [1, 2] });
+    expect(screen.getByText('Now following Severance · 2 seasons marked as seen')).toBeOnTheScreen();
     await fireEvent.press(screen.getByText('Undo'));
     expect(useWatchlist.getState().shows).toEqual([]);
   });

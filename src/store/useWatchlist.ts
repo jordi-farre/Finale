@@ -13,7 +13,8 @@ type WatchlistState = {
   hydrate: () => Promise<void>;
   follow: (snapshot: ShowSnapshot) => void;
   unfollow: (id: number) => void;
-  setSeen: (id: number, seasonNumber: number, seen: boolean) => void;
+  setSeen: (id: number, seasonNumber: number, seen: boolean) => { previous: number[]; next: number[] };
+  restoreSeen: (id: number, seenSeasons: number[]) => void;
   updateSnapshot: (snapshot: ShowSnapshot) => void;
   refreshAll: () => Promise<ShowAlert[]>;
 };
@@ -53,11 +54,26 @@ export const useWatchlist = create<WatchlistState>((set, get) => ({
   },
 
   setSeen: (id, seasonNumber, seen) => {
-    const shows = get().shows.map((show) => {
-      if (show.id !== id) return show;
-      const others = show.seenSeasons.filter((number) => number !== seasonNumber);
-      return { ...show, seenSeasons: seen ? [...others, seasonNumber].sort((a, b) => a - b) : others };
-    });
+    const show = get().shows.find((candidate) => candidate.id === id);
+    if (!show) return { previous: [], next: [] };
+    const previous = show.seenSeasons;
+    const next = seen
+      ? Array.from(
+          new Set([
+            ...previous,
+            seasonNumber,
+            ...show.snapshot.seasons
+              .filter((season) => season.state === 'complete' && season.seasonNumber < seasonNumber)
+              .map((season) => season.seasonNumber),
+          ]),
+        ).sort((a, b) => a - b)
+      : previous.filter((number) => number !== seasonNumber);
+    get().restoreSeen(id, next);
+    return { previous, next };
+  },
+
+  restoreSeen: (id, seenSeasons) => {
+    const shows = get().shows.map((show) => (show.id === id ? { ...show, seenSeasons } : show));
     set({ shows });
     persist(shows);
   },
