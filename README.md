@@ -8,19 +8,24 @@
 
 ## What it does
 
-- **Search with endings up front**: every search result says whether the show is returning, ended,
+- **Search with endings up front**: every search result says whether the show is ongoing, ended,
   or was cancelled, so you know before you start whether the story gets an ending.
-- **Show page**: status, a "Cancelled after 2 seasons" / "Ended after 5 seasons" callout, and the
-  state of the latest season: complete (with total binge time), airing ("4 of 10 out · finale
-  Oct 12"), or upcoming.
-- **Watchlist**: follow shows and see them grouped into *Ready to binge*, *Season airing*, and
-  *Waiting for new episodes*. Refreshed from TMDB on launch and on pull-to-refresh.
+- **Show page**: status, a "Cancelled after 2 seasons" / "Ended after 5 seasons" callout, and
+  every season with its state: complete (episodes and binge time), airing ("3 of 8 out · finale
+  Nov 4"), or upcoming. Tick the complete seasons you've seen; ticking one on a show you don't
+  follow yet follows it, with an Undo.
+- **Watchlist**, grouped by what you can watch next: *Ready to binge* (any complete season you
+  haven't seen, even while a newer one airs), *Season airing*, *Waiting for new episodes*, and
+  *All caught up* (shows that are over and fully seen).
+- **Season notifications** for followed shows: when a season starts ("you'll get another
+  notification when the whole season is out"), when it's complete, or when the show is cancelled.
+  A season that drops all at once gets a single notification. Tapping one opens the show. The
+  show page says exactly what you'll be notified about, and warns if notifications are blocked.
 - Local-only persistence (no account, no server of our own), light/dark mode, one Material 3
   palette (amber, generated from a single seed color) driving both Paper components and Tailwind
   classes.
 
-Planned next: "season complete" notifications from a daily background check, marking seasons as
-watched, and marathon mode (a resume bookmark plus a runtime planner).
+Planned next: marathon mode (a resume bookmark plus a runtime planner).
 
 ## Getting started
 
@@ -104,13 +109,15 @@ One-time setup for the build job:
 ## Project structure
 
 ```
+index.ts          entry point: defines the background task, then starts Expo Router
 assets/source/    icon generator (the PNGs in assets/images are its output)
 store/play/       Play Store listing copy, feature graphic, 512px icon, privacy policy page
 src/
   app/            expo-router screens: watchlist, search, show detail
   app-tests/      tests for the screens above
-  components/     ShowRow, Poster, StatusChip, EmptyState, MissingTokenBanner
-  lib/            TMDB client, token decoding, show/season status rules, AsyncStorage I/O, types
+  components/     ShowRow, SeasonRow, Poster, StatusChip, EmptyState, MissingTokenBanner
+  lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,
+                  background refresh, AsyncStorage I/O, types
   store/          the zustand watchlist store
   theme/          MD3 + Tailwind tokens, the Paper theme, NativeWind interop
   test-utils/     render wrapper and TMDB fixtures
@@ -119,7 +126,9 @@ src/
 ## How season status works
 
 For each show the app picks the current season (the season of the next announced episode, else
-of the last aired one) and loads its episode list. See [`src/lib/shows.ts`](src/lib/shows.ts):
+of the last aired one) and loads its episode list. Earlier seasons count as complete once their
+first air date has passed, later ones as upcoming; their binge time is estimated from TMDB's
+typical episode length. See [`src/lib/shows.ts`](src/lib/shows.ts). For the current season:
 
 - **Complete**: every listed episode has aired and TMDB announces no further episode in that
   season.
@@ -129,6 +138,27 @@ of the last aired one) and loads its episode list. See [`src/lib/shows.ts`](src/
 
 Each followed show stores its last snapshot, so the watchlist works offline and a failed refresh
 keeps the previous data.
+
+## How notifications work
+
+There's no push server. The app checks TMDB itself and posts local notifications
+([`src/lib/alerts.ts`](src/lib/alerts.ts) decides what to say,
+[`src/lib/notifications.ts`](src/lib/notifications.ts) shows it):
+
+- **When**: on every launch, when the app comes back to the foreground after 30+ minutes, and in
+  the background via [`expo-background-task`](https://docs.expo.dev/versions/v57.0.0/sdk/background-task/)
+  roughly every 6 hours ([`src/lib/backgroundRefresh.ts`](src/lib/backgroundRefresh.ts)).
+  Android's WorkManager runs it only with network and enough battery, so timing is approximate.
+  The task is defined in [`index.ts`](index.ts), the app's entry point, because Android runs it
+  without rendering any screen.
+- **What**: each followed show remembers which facts it has already announced (`premiere:3`,
+  `complete:3`, `cancelled`). Following a show records the current facts without notifying, so
+  you only hear about changes from then on, and each fact is announced exactly once.
+- **Permission** is asked when you first follow a show, not on launch. Android groups the alerts
+  under a "Season updates" channel that can be muted separately in system settings.
+- Background tasks and local notifications both work in Expo Go on Android. To trigger the
+  background task on demand while testing, call `BackgroundTask.triggerTaskWorkerForTestingAsync()`
+  from a debug build.
 
 ## Assets
 

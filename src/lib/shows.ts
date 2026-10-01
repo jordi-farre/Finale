@@ -1,7 +1,7 @@
 import { format, parseISO } from 'date-fns';
 
 import type { TmdbSeasonDetails, TmdbShowDetails } from '@/lib/tmdb';
-import type { SeasonState, ShowSnapshot, ShowStatus } from '@/lib/types';
+import type { FollowedShow, SeasonInfo, SeasonState, ShowSnapshot, ShowStatus } from '@/lib/types';
 
 export function toIsoDate(date: Date): string {
   return format(date, 'yyyy-MM-dd');
@@ -29,7 +29,7 @@ export function mapStatus(raw: string | null | undefined): ShowStatus {
 export function statusLabel(status: ShowStatus): string {
   switch (status) {
     case 'returning':
-      return 'Returning';
+      return 'Ongoing';
     case 'in-production':
       return 'In production';
     case 'planned':
@@ -105,6 +105,7 @@ export function buildSnapshot(
   season: TmdbSeasonDetails | null,
   now: Date = new Date(),
 ): ShowSnapshot {
+  const latestSeason = seasonState(season, details, now);
   return {
     id: details.id,
     name: details.name,
@@ -113,9 +114,38 @@ export function buildSnapshot(
     overview: details.overview,
     status: mapStatus(details.status),
     seasonCount: details.seasons.filter((s) => s.season_number > 0 && s.episode_count > 0).length,
-    latestSeason: seasonState(season, details, now),
+    latestSeason,
+    seasons: seasonList(details, latestSeason, now),
     fetchedAt: now.toISOString(),
   };
+}
+
+export function seasonList(
+  details: Pick<TmdbShowDetails, 'seasons' | 'episode_run_time'>,
+  latest: SeasonState,
+  now: Date = new Date(),
+): SeasonInfo[] {
+  const today = toIsoDate(now);
+  const perEpisode = details.episode_run_time[0] ?? null;
+  const currentNumber = latest.kind === 'none' ? null : latest.seasonNumber;
+  return details.seasons
+    .filter((season) => season.season_number > 0)
+    .sort((a, b) => a.season_number - b.season_number)
+    .map((season): SeasonInfo => {
+      const estimate = perEpisode && season.episode_count > 0 ? perEpisode * season.episode_count : null;
+      const base = { seasonNumber: season.season_number, episodeCount: season.episode_count, airDate: season.air_date };
+      if (latest.kind !== 'none' && season.season_number === currentNumber) {
+        if (latest.kind === 'complete') {
+          return { ...base, episodeCount: latest.episodeCount, state: 'complete', runtimeMinutes: latest.runtimeMinutes ?? estimate };
+        }
+        return { ...base, state: latest.kind, runtimeMinutes: null };
+      }
+      const beforeCurrent = currentNumber === null || season.season_number < currentNumber;
+      const aired = season.episode_count > 0 && season.air_date !== null && season.air_date <= today;
+      return beforeCurrent && aired
+        ? { ...base, state: 'complete', runtimeMinutes: estimate }
+        : { ...base, state: 'upcoming', runtimeMinutes: null };
+    });
 }
 
 export function formatRuntime(minutes: number): string {
@@ -169,10 +199,81 @@ export function endingNote(snapshot: Pick<ShowSnapshot, 'status' | 'seasonCount'
   return null;
 }
 
-export type WatchlistGroup = 'ready' | 'airing' | 'waiting';
+export function unseenCompleteSeasons(show: Pick<FollowedShow, 'snapshot' | 'seenSeasons'>): SeasonInfo[] {
+  return show.snapshot.seasons.filter(
+    (season) => season.state === 'complete' && !show.seenSeasons.includes(season.seasonNumber),
+  );
+}
 
-export function watchlistGroup(state: SeasonState): WatchlistGroup {
-  if (state.kind === 'complete') return 'ready';
-  if (state.kind === 'airing') return 'airing';
+const isOver = (status: ShowStatus) => status === 'ended' || status === 'cancelled';
+
+export type WatchlistGroup = 'ready' | 'airing' | 'waiting' | 'done';
+
+export function watchlistGroup(show: Pick<FollowedShow, 'snapshot' | 'seenSeasons'>): WatchlistGroup {
+  if (unseenCompleteSeasons(show).length > 0) return 'ready';
+  if (show.snapshot.latestSeason.kind === 'airing') return 'airing';
+  if (isOver(show.snapshot.status)) return 'done';
   return 'waiting';
+}
+
+function sumRuntime(seasons: SeasonInfo[]): number | null {
+  let total = 0;
+  for (const season of seasons) {
+    if (season.runtimeMinutes === null) return null;
+    total += season.runtimeMinutes;
+  }
+  return total;
+}
+
+export function watchlistDetail(show: Pick<FollowedShow, 'snapshot' | 'seenSeasons'>, now: Date = new Date()): string | null {
+  const unseen = unseenCompleteSeasons(show);
+  if (unseen.length === 1) {
+    const [season] = unseen;
+    const parts = [`Season ${season.seasonNumber} to binge`, plural(season.episodeCount, 'episode')];
+    if (season.runtimeMinutes) parts.push(formatRuntime(season.runtimeMinutes));
+    return parts.join(' · ');
+  }
+  if (unseen.length > 1) {
+    const runtime = sumRuntime(unseen);
+    const episodes = unseen.reduce((total, season) => total + season.episodeCount, 0);
+    const parts = [`${unseen.length} seasons to binge`, plural(episodes, 'episode')];
+    if (runtime) parts.push(formatRuntime(runtime));
+    return parts.join(' · ');
+  }
+  const { latestSeason, status } = show.snapshot;
+  if (latestSeason.kind === 'airing' || latestSeason.kind === 'upcoming') return seasonSummary(latestSeason, now);
+  if (isOver(status)) return 'All caught up';
+  return 'All caught up · waiting for a new season';
+}
+
+export function followHint(snapshot: Pick<ShowSnapshot, 'status' | 'latestSeason'>, following: boolean): string {
+  const latest = snapshot.latestSeason;
+  if (isOver(snapshot.status) && latest.kind !== 'airing' && latest.kind !== 'upcoming') {
+    return following
+      ? 'This show is over, so there are no new seasons to notify you about.'
+      : "This show is over. Follow it to keep track of the seasons you've seen.";
+  }
+  const lead = following ? "You'll get a notification" : 'Follow to get a notification';
+  if (latest.kind === 'airing') return `${lead} when Season ${latest.seasonNumber} is complete.`;
+  if (latest.kind === 'upcoming') {
+    return `${lead} when Season ${latest.seasonNumber} premieres, and another when it's complete.`;
+  }
+  return `${lead} when a new season starts, and another when it's complete.`;
+}
+
+export function seasonStateLabel(season: SeasonInfo, latest: SeasonState, now: Date = new Date()): string {
+  if (season.state === 'complete') return 'Complete';
+  if (season.state === 'airing' && latest.kind === 'airing' && latest.seasonNumber === season.seasonNumber) {
+    const progress = latest.episodeCount === null ? `${latest.airedCount} out` : `${latest.airedCount} of ${latest.episodeCount} out`;
+    return latest.finaleDate ? `Airing · ${progress} · finale ${formatDay(latest.finaleDate, now)}` : `Airing · ${progress}`;
+  }
+  const premiere = latest.kind === 'upcoming' && latest.seasonNumber === season.seasonNumber ? latest.premiereDate : season.airDate;
+  return premiere ? `Premieres ${formatDay(premiere, now)}` : 'Announced';
+}
+
+export function seasonDetailLine(season: SeasonInfo): string | null {
+  if (season.episodeCount === 0) return null;
+  const parts = [plural(season.episodeCount, 'episode')];
+  if (season.runtimeMinutes) parts.push(formatRuntime(season.runtimeMinutes));
+  return parts.join(' · ');
 }

@@ -7,6 +7,16 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 require('react-native-reanimated').setUpTests();
 
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn().mockResolvedValue(null),
+  getPermissionsAsync: jest.fn().mockResolvedValue({ granted: false, canAskAgain: true }),
+  requestPermissionsAsync: jest.fn().mockResolvedValue({ granted: true, canAskAgain: true }),
+  scheduleNotificationAsync: jest.fn().mockResolvedValue('mock-notification-id'),
+  useLastNotificationResponse: jest.fn(() => null),
+  AndroidImportance: { DEFAULT: 3 },
+}));
+
 jest.mock('@/lib/token', () => ({ readTmdbToken: jest.fn(() => 'test-token') }));
 
 afterEach(async () => {

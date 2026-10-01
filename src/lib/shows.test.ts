@@ -4,11 +4,16 @@ import {
   endingNote,
   formatRuntime,
   mapStatus,
+  followHint,
+  seasonList,
   seasonState,
+  seasonStateLabel,
   seasonSummary,
+  statusLabel,
+  watchlistDetail,
   watchlistGroup,
 } from '@/lib/shows';
-import { seasonDetails, showDetails } from '@/test-utils/fixtures';
+import { followed, season, seasonDetails, showDetails, snapshot } from '@/test-utils/fixtures';
 
 const NOW = new Date(2026, 8, 30, 12);
 
@@ -103,6 +108,10 @@ describe('buildSnapshot', () => {
     const snap = buildSnapshot(showDetails({ status: 'Canceled' }), seasonDetails(2, ['2025-03-14', '2025-03-21']), NOW);
     expect(snap).toMatchObject({ id: 1, name: 'Severance', firstAirYear: '2022', status: 'cancelled', seasonCount: 2 });
     expect(snap.latestSeason.kind).toBe('complete');
+    expect(snap.seasons.map((s) => [s.seasonNumber, s.state])).toEqual([
+      [1, 'complete'],
+      [2, 'complete'],
+    ]);
   });
 });
 
@@ -162,11 +171,123 @@ describe('endingNote', () => {
   });
 });
 
+describe('seasonList', () => {
+  const details = {
+    episode_run_time: [30],
+    seasons: [
+      { season_number: 0, episode_count: 2, air_date: '2019-01-01', name: 'Specials' },
+      { season_number: 2, episode_count: 8, air_date: '2021-03-01', name: 'Season 2' },
+      { season_number: 1, episode_count: 10, air_date: '2019-03-01', name: 'Season 1' },
+      { season_number: 3, episode_count: 6, air_date: '2026-09-16', name: 'Season 3' },
+      { season_number: 4, episode_count: 0, air_date: null, name: 'Season 4' },
+    ],
+  };
+
+  it('marks earlier seasons complete, the current one from its state, and later ones upcoming', () => {
+    const latest = { kind: 'airing' as const, seasonNumber: 3, airedCount: 2, episodeCount: 6, finaleDate: '2026-10-21' };
+    expect(seasonList(details, latest, NOW)).toEqual([
+      { seasonNumber: 1, episodeCount: 10, airDate: '2019-03-01', state: 'complete', runtimeMinutes: 300 },
+      { seasonNumber: 2, episodeCount: 8, airDate: '2021-03-01', state: 'complete', runtimeMinutes: 240 },
+      { seasonNumber: 3, episodeCount: 6, airDate: '2026-09-16', state: 'airing', runtimeMinutes: null },
+      { seasonNumber: 4, episodeCount: 0, airDate: null, state: 'upcoming', runtimeMinutes: null },
+    ]);
+  });
+
+  it('uses the exact runtime of a complete current season', () => {
+    const latest = { kind: 'complete' as const, seasonNumber: 3, episodeCount: 6, runtimeMinutes: 200, completedOn: '2026-09-28' };
+    expect(seasonList(details, latest, NOW)[2]).toMatchObject({ state: 'complete', runtimeMinutes: 200 });
+  });
+
+  it('leaves runtime unknown when TMDB has no episode length', () => {
+    const latest = { kind: 'none' as const };
+    expect(seasonList({ ...details, episode_run_time: [] }, latest, NOW)[0].runtimeMinutes).toBeNull();
+  });
+});
+
 describe('watchlistGroup', () => {
-  it('groups by the state of the latest season', () => {
-    expect(watchlistGroup({ kind: 'complete', seasonNumber: 1, episodeCount: 1, runtimeMinutes: null, completedOn: null })).toBe('ready');
-    expect(watchlistGroup({ kind: 'airing', seasonNumber: 1, airedCount: 1, episodeCount: 2, finaleDate: null })).toBe('airing');
-    expect(watchlistGroup({ kind: 'upcoming', seasonNumber: 1, premiereDate: null })).toBe('waiting');
-    expect(watchlistGroup({ kind: 'none' })).toBe('waiting');
+  it('is ready when a complete season has not been seen, even while another airs', () => {
+    const show = followed({
+      latestSeason: { kind: 'airing', seasonNumber: 3, airedCount: 1, episodeCount: 8, finaleDate: null },
+      seasons: [season(1), season(2), season(3, { state: 'airing' })],
+    });
+    expect(watchlistGroup({ ...show, seenSeasons: [1] })).toBe('ready');
+  });
+
+  it('is airing once every complete season has been seen', () => {
+    const show = followed({
+      latestSeason: { kind: 'airing', seasonNumber: 2, airedCount: 1, episodeCount: 8, finaleDate: null },
+      seasons: [season(1), season(2, { state: 'airing' })],
+    });
+    expect(watchlistGroup({ ...show, seenSeasons: [1] })).toBe('airing');
+  });
+
+  it('is waiting when caught up on a running show', () => {
+    expect(watchlistGroup({ ...followed(), seenSeasons: [1, 2] })).toBe('waiting');
+  });
+
+  it('is done when caught up on a show that is over', () => {
+    expect(watchlistGroup({ ...followed({ status: 'cancelled' }), seenSeasons: [1, 2] })).toBe('done');
+  });
+});
+
+describe('watchlistDetail', () => {
+  it('describes a single season to binge', () => {
+    expect(watchlistDetail({ ...followed(), seenSeasons: [1] }, NOW)).toBe('Season 2 to binge · 10 episodes · 8h 20m');
+  });
+
+  it('adds up several seasons to binge', () => {
+    expect(watchlistDetail(followed(), NOW)).toBe('2 seasons to binge · 19 episodes · 15h 50m');
+  });
+
+  it('describes the airing season when caught up', () => {
+    const show = followed({
+      latestSeason: { kind: 'airing', seasonNumber: 2, airedCount: 3, episodeCount: 8, finaleDate: null },
+      seasons: [season(1), season(2, { state: 'airing' })],
+    });
+    expect(watchlistDetail({ ...show, seenSeasons: [1] }, NOW)).toBe('Season 2 airing · 3 of 8 out');
+  });
+
+  it('says when you are caught up', () => {
+    expect(watchlistDetail({ ...followed(), seenSeasons: [1, 2] }, NOW)).toBe('All caught up · waiting for a new season');
+    expect(watchlistDetail({ ...followed({ status: 'ended' }), seenSeasons: [1, 2] }, NOW)).toBe('All caught up');
+  });
+});
+
+describe('followHint', () => {
+  const airing = { status: 'returning' as const, latestSeason: { kind: 'airing' as const, seasonNumber: 3, airedCount: 1, episodeCount: 8, finaleDate: null } };
+
+  it('explains what following will notify about', () => {
+    expect(followHint(airing, false)).toBe('Follow to get a notification when Season 3 is complete.');
+    expect(followHint(airing, true)).toBe("You'll get a notification when Season 3 is complete.");
+  });
+
+  it('mentions both alerts for an upcoming season', () => {
+    expect(followHint({ status: 'returning', latestSeason: { kind: 'upcoming', seasonNumber: 4, premiereDate: null } }, true)).toBe(
+      "You'll get a notification when Season 4 premieres, and another when it's complete.",
+    );
+  });
+
+  it('promises the next season for a running show between seasons', () => {
+    expect(followHint(snapshot(), true)).toBe("You'll get a notification when a new season starts, and another when it's complete.");
+  });
+
+  it('is honest that a finished show has nothing to wait for', () => {
+    expect(followHint(snapshot({ status: 'ended' }), false)).toBe("This show is over. Follow it to keep track of the seasons you've seen.");
+  });
+});
+
+describe('seasonStateLabel', () => {
+  it('labels each kind of season', () => {
+    const airing = { kind: 'airing' as const, seasonNumber: 3, airedCount: 2, episodeCount: 6, finaleDate: '2026-10-21' };
+    expect(seasonStateLabel(season(1), airing, NOW)).toBe('Complete');
+    expect(seasonStateLabel(season(3, { state: 'airing' }), airing, NOW)).toBe('Airing · 2 of 6 out · finale Oct 21');
+    expect(seasonStateLabel(season(4, { state: 'upcoming', airDate: null }), airing, NOW)).toBe('Announced');
+    expect(seasonStateLabel(season(4, { state: 'upcoming', airDate: '2027-02-01' }), airing, NOW)).toBe('Premieres Feb 1, 2027');
+  });
+});
+
+describe('statusLabel', () => {
+  it('calls returning series ongoing', () => {
+    expect(statusLabel('returning')).toBe('Ongoing');
   });
 });

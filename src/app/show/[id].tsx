@@ -1,29 +1,33 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { ActivityIndicator, Appbar, Button, Card, Icon, Text, useTheme } from 'react-native-paper';
+import { Linking, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Appbar, Button, Card, Icon, Snackbar, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Poster } from '@/components/Poster';
+import { SeasonRow } from '@/components/SeasonRow';
 import { StatusChip } from '@/components/StatusChip';
-import { endingNote, seasonSummary } from '@/lib/shows';
+import { useNotificationPermission } from '@/hooks/use-notification-permission';
+import { endingNote, followHint } from '@/lib/shows';
 import { fetchSnapshot } from '@/lib/tmdb';
 import type { ShowSnapshot } from '@/lib/types';
-import { useIsFollowing, useWatchlist } from '@/store/useWatchlist';
+import { useWatchlist } from '@/store/useWatchlist';
 
 export default function ShowScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const showId = Number(id);
-  const stored = useWatchlist((state) => state.shows.find((show) => show.id === showId)?.snapshot);
-  const following = useIsFollowing(showId);
+  const followed = useWatchlist((state) => state.shows.find((show) => show.id === showId));
   const follow = useWatchlist((state) => state.follow);
   const unfollow = useWatchlist((state) => state.unfollow);
+  const setSeen = useWatchlist((state) => state.setSeen);
   const updateSnapshot = useWatchlist((state) => state.updateSnapshot);
+  const notifications = useNotificationPermission();
 
   const [fetched, setFetched] = useState<ShowSnapshot | null>(null);
   const [error, setError] = useState(false);
+  const [autoFollowed, setAutoFollowed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -41,96 +45,148 @@ export default function ShowScreen() {
     };
   }, [showId, updateSnapshot]);
 
-  const snapshot = fetched ?? stored ?? null;
-  const summary = snapshot ? seasonSummary(snapshot.latestSeason) : null;
-  const ending = snapshot ? endingNote(snapshot) : null;
-  const ready = snapshot?.latestSeason.kind === 'complete';
+  const snapshot = fetched ?? followed?.snapshot ?? null;
+  const following = followed !== undefined;
+  const seenSeasons = followed?.seenSeasons ?? [];
 
-  return (
-    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title={snapshot?.name ?? ''} />
-      </Appbar.Header>
+  function startFollowing(current: ShowSnapshot) {
+    follow(current);
+    void notifications.request();
+  }
 
-      {!snapshot ? (
-        error ? (
+  function toggleSeen(current: ShowSnapshot, seasonNumber: number) {
+    if (!following) {
+      startFollowing(current);
+      setAutoFollowed(true);
+    }
+    setSeen(current.id, seasonNumber, !seenSeasons.includes(seasonNumber));
+  }
+
+  if (!snapshot) {
+    return (
+      <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+        <Appbar.Header>
+          <Appbar.BackAction onPress={() => router.back()} />
+        </Appbar.Header>
+        {error ? (
           <Text variant="bodyMedium" className="p-md" style={{ color: theme.colors.error }}>
             Couldn&apos;t load this show. Check your connection and try again.
           </Text>
         ) : (
           <ActivityIndicator className="mt-lg" />
-        )
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 24 }}>
-          <View className="flex-row gap-md">
-            <Poster path={snapshot.posterPath} width={120} />
-            <View className="flex-1 gap-sm">
-              <Text variant="headlineSmall">{snapshot.name}</Text>
-              {snapshot.firstAirYear ? (
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {`${snapshot.firstAirYear} · ${snapshot.seasonCount} season${snapshot.seasonCount === 1 ? '' : 's'}`}
-                </Text>
-              ) : null}
-              <StatusChip status={snapshot.status} />
-            </View>
+        )}
+      </View>
+    );
+  }
+
+  const ending = endingNote(snapshot);
+  const cancelled = snapshot.status === 'cancelled';
+  const showNotificationWarning = following && notifications.status === 'blocked';
+
+  return (
+    <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+      <Appbar.Header>
+        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.Content title={snapshot.name} />
+      </Appbar.Header>
+
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 24 }}>
+        <View className="flex-row gap-md">
+          <Poster path={snapshot.posterPath} width={120} />
+          <View className="flex-1 gap-sm">
+            <Text variant="headlineSmall">{snapshot.name}</Text>
+            {snapshot.firstAirYear ? (
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {`${snapshot.firstAirYear} · ${snapshot.seasonCount} season${snapshot.seasonCount === 1 ? '' : 's'}`}
+              </Text>
+            ) : null}
+            <StatusChip status={snapshot.status} />
           </View>
+        </View>
 
-          {ending ? (
-            <Card
-              mode="contained"
-              style={{
-                backgroundColor:
-                  snapshot.status === 'cancelled' ? theme.colors.errorContainer : theme.colors.secondaryContainer,
-              }}>
-              <Card.Content className="flex-row items-center gap-sm">
-                <Icon
-                  source={snapshot.status === 'cancelled' ? 'alert-circle-outline' : 'check-circle-outline'}
-                  size={24}
-                  color={
-                    snapshot.status === 'cancelled' ? theme.colors.onErrorContainer : theme.colors.onSecondaryContainer
-                  }
-                />
-                <Text
-                  variant="bodyMedium"
-                  className="flex-1"
-                  style={{
-                    color:
-                      snapshot.status === 'cancelled'
-                        ? theme.colors.onErrorContainer
-                        : theme.colors.onSecondaryContainer,
-                  }}>
-                  {ending}
-                </Text>
-              </Card.Content>
-            </Card>
-          ) : null}
+        {ending ? (
+          <Card
+            mode="contained"
+            style={{ backgroundColor: cancelled ? theme.colors.errorContainer : theme.colors.secondaryContainer }}>
+            <Card.Content className="flex-row items-center gap-sm">
+              <Icon
+                source={cancelled ? 'alert-circle-outline' : 'check-circle-outline'}
+                size={24}
+                color={cancelled ? theme.colors.onErrorContainer : theme.colors.onSecondaryContainer}
+              />
+              <Text
+                variant="bodyMedium"
+                className="flex-1"
+                style={{ color: cancelled ? theme.colors.onErrorContainer : theme.colors.onSecondaryContainer }}>
+                {ending}
+              </Text>
+            </Card.Content>
+          </Card>
+        ) : null}
 
-          {summary ? (
-            <Card mode="outlined">
-              <Card.Content className="gap-xs">
-                <Text variant="labelLarge" style={{ color: ready ? theme.colors.primary : theme.colors.onSurfaceVariant }}>
-                  {ready ? 'Ready to binge' : 'Latest season'}
-                </Text>
-                <Text variant="bodyLarge">{summary}</Text>
-              </Card.Content>
-            </Card>
-          ) : null}
-
+        <View className="gap-sm">
           <Button
             mode={following ? 'outlined' : 'contained'}
-            icon={following ? 'check' : 'plus'}
-            onPress={() => (following ? unfollow(snapshot.id) : follow(snapshot))}>
+            icon={following ? 'bell-check-outline' : 'bell-plus-outline'}
+            onPress={() => (following ? unfollow(snapshot.id) : startFollowing(snapshot))}>
             {following ? 'Following' : 'Follow'}
           </Button>
-
-          {snapshot.overview ? (
-            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              {snapshot.overview}
-            </Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+            {followHint(snapshot, following)}
+          </Text>
+          {showNotificationWarning ? (
+            <View
+              className="flex-row items-center gap-sm rounded-md p-sm"
+              style={{ backgroundColor: theme.colors.errorContainer }}>
+              <Icon source="bell-off-outline" size={20} color={theme.colors.onErrorContainer} />
+              <Text variant="bodySmall" className="flex-1" style={{ color: theme.colors.onErrorContainer }}>
+                Notifications are off for Finale, so you won&apos;t get season alerts.
+              </Text>
+              <Button compact textColor={theme.colors.onErrorContainer} onPress={() => void Linking.openSettings()}>
+                Settings
+              </Button>
+            </View>
           ) : null}
-        </ScrollView>
-      )}
+        </View>
+
+        {snapshot.seasons.length > 0 ? (
+          <View>
+            <Text variant="titleMedium">Seasons</Text>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+              Tick the seasons you&apos;ve seen. The rest show up as ready to binge.
+            </Text>
+            {snapshot.seasons.map((season) => (
+              <SeasonRow
+                key={season.seasonNumber}
+                season={season}
+                latest={snapshot.latestSeason}
+                seen={seenSeasons.includes(season.seasonNumber)}
+                onToggleSeen={() => toggleSeen(snapshot, season.seasonNumber)}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        {snapshot.overview ? (
+          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+            {snapshot.overview}
+          </Text>
+        ) : null}
+      </ScrollView>
+
+      <Snackbar
+        visible={autoFollowed && following}
+        onDismiss={() => setAutoFollowed(false)}
+        duration={5000}
+        action={{
+          label: 'Undo',
+          onPress: () => {
+            unfollow(snapshot.id);
+            setAutoFollowed(false);
+          },
+        }}>
+        {`Now following ${snapshot.name}`}
+      </Snackbar>
     </View>
   );
 }

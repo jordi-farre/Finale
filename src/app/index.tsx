@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { MissingTokenBanner } from '@/components/MissingTokenBanner';
 import { ShowRow } from '@/components/ShowRow';
-import { seasonSummary, watchlistGroup, type WatchlistGroup } from '@/lib/shows';
+import { watchlistDetail, watchlistGroup, type WatchlistGroup } from '@/lib/shows';
 import type { FollowedShow } from '@/lib/types';
 import { useWatchlist } from '@/store/useWatchlist';
 
@@ -14,6 +14,7 @@ const GROUPS: { key: WatchlistGroup; title: string }[] = [
   { key: 'ready', title: 'Ready to binge' },
   { key: 'airing', title: 'Season airing' },
   { key: 'waiting', title: 'Waiting for new episodes' },
+  { key: 'done', title: 'All caught up' },
 ];
 
 export default function WatchlistScreen() {
@@ -27,7 +28,7 @@ export default function WatchlistScreen() {
     key: group.key,
     title: group.title,
     data: shows
-      .filter((show) => watchlistGroup(show.snapshot.latestSeason) === group.key)
+      .filter((show) => watchlistGroup(show) === group.key)
       .sort((a, b) => a.snapshot.name.localeCompare(b.snapshot.name)),
   })).filter((section) => section.data.length > 0);
 
@@ -42,7 +43,7 @@ export default function WatchlistScreen() {
       {shows.length === 0 ? (
         <EmptyState
           title="Nothing followed yet"
-          message="Search for a show to see if it's cancelled, and follow it to know when a season is ready to binge."
+          message="Search for a show to see if it was cancelled. Follow it and you'll get a notification when a season starts and when it's complete."
           actionLabel="Search shows"
           onAction={() => router.push('/search')}
         />
@@ -64,7 +65,7 @@ export default function WatchlistScreen() {
               year={item.snapshot.firstAirYear}
               posterPath={item.snapshot.posterPath}
               status={item.snapshot.status}
-              detail={seasonSummary(item.snapshot.latestSeason)}
+              detail={watchlistDetail(item)}
               onPress={() => router.push(`/show/${item.id}`)}
             />
           )}

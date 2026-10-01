@@ -12,7 +12,7 @@ Know if a show was cancelled, and when a season is complete. Then binge it.
 
 ## Full description
 
-_Max 4000 characters. Currently ~940._
+_Max 4000 characters. Currently ~1040._
 
 ```
 Finale is a TV tracker for people who binge. Instead of pinging you every week, it tells you what actually matters: whether a show gets an ending, and when a season is fully out.
@@ -22,11 +22,12 @@ BEFORE YOU START A SHOW
 • "Cancelled after 2 seasons. The story may not get an ending." Know before you invest the hours
 
 WHILE A SEASON AIRS
-• Follow a show and Finale keeps track of the current season: how many episodes are out, and when the finale airs
-• Your watchlist is grouped into Ready to binge, Season airing, and Waiting for new episodes
+• Follow a show and get a notification when a new season starts, and another when the whole season is out
+• See how many episodes are out and when the finale airs
 
 WHEN IT'S DONE
-• A complete season shows its episode count and total runtime, so you know how long the binge will take
+• Every season shows its episode count and total runtime, so you know how long the binge will take
+• Tick off the seasons you've seen. Your watchlist is grouped into Ready to binge, Season airing, Waiting for new episodes, and All caught up
 
 PRIVATE BY DESIGN
 No account, no sign-in, no ads, no analytics. Your watchlist stays on your phone. Show data comes from The Movie Database (TMDB).

@@ -41,6 +41,14 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#FFB956"
+        }
+      ],
+      "expo-background-task",
+      [
         "expo-build-properties",
         {
           "android": {

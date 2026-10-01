@@ -1,5 +1,6 @@
 import type { TmdbSeasonDetails, TmdbShowDetails } from '@/lib/tmdb';
-import type { FollowedShow, ShowSnapshot } from '@/lib/types';
+import { mergeNotified } from '@/lib/alerts';
+import type { FollowedShow, SeasonInfo, ShowSnapshot } from '@/lib/types';
 
 export function showDetails(overrides: Partial<TmdbShowDetails> = {}): TmdbShowDetails {
   return {
@@ -40,12 +41,31 @@ export function snapshot(overrides: Partial<ShowSnapshot> = {}): ShowSnapshot {
     status: 'returning',
     seasonCount: 2,
     latestSeason: { kind: 'complete', seasonNumber: 2, episodeCount: 10, runtimeMinutes: 500, completedOn: '2025-03-21' },
+    seasons: [season(1, { episodeCount: 9, runtimeMinutes: 450 }), season(2, { episodeCount: 10, runtimeMinutes: 500 })],
     fetchedAt: '2026-09-30T00:00:00.000Z',
     ...overrides,
   };
 }
 
-export function followed(overrides: Partial<ShowSnapshot> = {}): FollowedShow {
+export function season(seasonNumber: number, overrides: Partial<SeasonInfo> = {}): SeasonInfo {
+  return {
+    seasonNumber,
+    episodeCount: 10,
+    airDate: `202${seasonNumber}-01-01`,
+    state: 'complete',
+    runtimeMinutes: null,
+    ...overrides,
+  };
+}
+
+export function followed(overrides: Partial<ShowSnapshot> = {}, extra: Partial<FollowedShow> = {}): FollowedShow {
   const snap = snapshot(overrides);
-  return { id: snap.id, followedAt: '2026-09-01T00:00:00.000Z', snapshot: snap };
+  return {
+    id: snap.id,
+    followedAt: '2026-09-01T00:00:00.000Z',
+    snapshot: snap,
+    seenSeasons: [],
+    notified: mergeNotified([], snap),
+    ...extra,
+  };
 }

@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import WatchlistScreen from '@/app/index';
 import { readTmdbToken } from '@/lib/token';
 import { useWatchlist } from '@/store/useWatchlist';
-import { followed } from '@/test-utils/fixtures';
+import { followed, season } from '@/test-utils/fixtures';
 import { fireEvent, render, screen } from '@/test-utils/render';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
@@ -16,26 +16,52 @@ describe('watchlist', () => {
     expect(router.push).toHaveBeenCalledWith('/search');
   });
 
-  it('groups shows by whether their season is ready to binge', async () => {
+  it('groups shows by what you can watch next', async () => {
     useWatchlist.setState({
       hydrated: true,
       shows: [
-        followed({ id: 1, name: 'Severance' }),
-        followed({
-          id: 2,
-          name: 'The Bear',
-          latestSeason: { kind: 'airing', seasonNumber: 5, airedCount: 3, episodeCount: 10, finaleDate: null },
-        }),
-        followed({ id: 3, name: 'Andor', latestSeason: { kind: 'upcoming', seasonNumber: 3, premiereDate: null } }),
+        followed({ id: 1, name: 'Severance' }, { seenSeasons: [1] }),
+        followed(
+          {
+            id: 2,
+            name: 'The Bear',
+            latestSeason: { kind: 'airing', seasonNumber: 2, airedCount: 3, episodeCount: 10, finaleDate: null },
+            seasons: [season(1), season(2, { state: 'airing' })],
+          },
+          { seenSeasons: [1] },
+        ),
+        followed(
+          { id: 3, name: 'Andor', latestSeason: { kind: 'upcoming', seasonNumber: 3, premiereDate: null } },
+          { seenSeasons: [1, 2] },
+        ),
+        followed({ id: 4, name: 'Firefly', status: 'cancelled' }, { seenSeasons: [1, 2] }),
       ],
     });
     await render(<WatchlistScreen />);
     expect(screen.getByText('Ready to binge')).toBeOnTheScreen();
-    expect(screen.getByText('Season 2 complete · 10 episodes · 8h 20m')).toBeOnTheScreen();
+    expect(screen.getByText('Season 2 to binge · 10 episodes · 8h 20m')).toBeOnTheScreen();
     expect(screen.getByText('Season airing')).toBeOnTheScreen();
-    expect(screen.getByText('Season 5 airing · 3 of 10 out')).toBeOnTheScreen();
+    expect(screen.getByText('Season 2 airing · 3 of 10 out')).toBeOnTheScreen();
     expect(screen.getByText('Waiting for new episodes')).toBeOnTheScreen();
     expect(screen.getByText('Season 3 announced')).toBeOnTheScreen();
+    expect(screen.getByText('All caught up')).toBeOnTheScreen();
+  });
+
+  it('lists a show with an airing season under ready when older seasons are unseen', async () => {
+    useWatchlist.setState({
+      hydrated: true,
+      shows: [
+        followed({
+          name: 'The Bear',
+          latestSeason: { kind: 'airing', seasonNumber: 3, airedCount: 3, episodeCount: 10, finaleDate: null },
+          seasons: [season(1, { runtimeMinutes: 300 }), season(2, { runtimeMinutes: 300 }), season(3, { state: 'airing' })],
+        }),
+      ],
+    });
+    await render(<WatchlistScreen />);
+    expect(screen.getByText('Ready to binge')).toBeOnTheScreen();
+    expect(screen.getByText('2 seasons to binge · 20 episodes · 10h')).toBeOnTheScreen();
+    expect(screen.queryByText('Season airing')).toBeNull();
   });
 
   it('flags cancelled shows', async () => {

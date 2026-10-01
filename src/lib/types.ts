@@ -18,6 +18,14 @@ export type SeasonState =
   | { kind: 'upcoming'; seasonNumber: number; premiereDate: string | null }
   | { kind: 'none' };
 
+export type SeasonInfo = {
+  seasonNumber: number;
+  episodeCount: number;
+  airDate: string | null;
+  state: 'complete' | 'airing' | 'upcoming';
+  runtimeMinutes: number | null;
+};
+
 export type ShowSnapshot = {
   id: number;
   name: string;
@@ -27,6 +35,7 @@ export type ShowSnapshot = {
   status: ShowStatus;
   seasonCount: number;
   latestSeason: SeasonState;
+  seasons: SeasonInfo[];
   fetchedAt: string;
 };
 
@@ -34,6 +43,8 @@ export type FollowedShow = {
   id: number;
   followedAt: string;
   snapshot: ShowSnapshot;
+  seenSeasons: number[];
+  notified: string[];
 };
 
 export type PersistedState = {

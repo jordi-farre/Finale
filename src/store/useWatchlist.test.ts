@@ -1,13 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { presentAlerts } from '@/lib/notifications';
 import { STORAGE_KEY_FOR_TESTS } from '@/lib/storage';
 import { fetchSnapshot } from '@/lib/tmdb';
 import { useWatchlist } from '@/store/useWatchlist';
 import { snapshot } from '@/test-utils/fixtures';
 
 jest.mock('@/lib/tmdb', () => ({ ...jest.requireActual('@/lib/tmdb'), fetchSnapshot: jest.fn() }));
+jest.mock('@/lib/notifications', () => ({ presentAlerts: jest.fn().mockResolvedValue(undefined) }));
 
 const fetchSnapshotMock = jest.mocked(fetchSnapshot);
+const presentAlertsMock = jest.mocked(presentAlerts);
+
+beforeEach(() => {
+  presentAlertsMock.mockClear();
+});
 
 async function persisted() {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -53,5 +60,48 @@ describe('useWatchlist', () => {
     expect(first.snapshot.status).toBe('cancelled');
     expect(second.snapshot.name).toBe('Andor');
     expect(useWatchlist.getState().refreshing).toBe(false);
+  });
+
+  it('primes alerts on follow so nothing fires for seasons that were already out', () => {
+    useWatchlist.getState().follow(snapshot());
+    expect(useWatchlist.getState().shows[0].notified).toEqual(['premiere:2', 'complete:2']);
+  });
+
+  it('marks and unmarks seasons as seen', () => {
+    useWatchlist.getState().follow(snapshot());
+    useWatchlist.getState().setSeen(1, 2, true);
+    useWatchlist.getState().setSeen(1, 1, true);
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1, 2]);
+    useWatchlist.getState().setSeen(1, 2, false);
+    expect(useWatchlist.getState().shows[0].seenSeasons).toEqual([1]);
+  });
+
+  it('notifies once when a followed season starts and once when it completes', async () => {
+    useWatchlist.getState().follow(snapshot({ latestSeason: { kind: 'upcoming', seasonNumber: 3, premiereDate: null } }));
+
+    fetchSnapshotMock.mockResolvedValue(
+      snapshot({ latestSeason: { kind: 'airing', seasonNumber: 3, airedCount: 1, episodeCount: 8, finaleDate: null } }),
+    );
+    expect((await useWatchlist.getState().refreshAll()).map((alert) => alert.title)).toEqual([
+      'Severance: Season 3 has started',
+    ]);
+    expect(await useWatchlist.getState().refreshAll()).toEqual([]);
+
+    fetchSnapshotMock.mockResolvedValue(
+      snapshot({ latestSeason: { kind: 'complete', seasonNumber: 3, episodeCount: 8, runtimeMinutes: null, completedOn: null } }),
+    );
+    expect((await useWatchlist.getState().refreshAll()).map((alert) => alert.title)).toEqual([
+      'Severance: Season 3 is complete',
+    ]);
+    expect(presentAlertsMock).toHaveBeenCalledTimes(3);
+    expect(useWatchlist.getState().shows[0].notified).toEqual(['premiere:3', 'complete:3']);
+  });
+
+  it('keeps seen seasons when a refresh replaces the snapshot', async () => {
+    useWatchlist.getState().follow(snapshot());
+    useWatchlist.getState().setSeen(1, 1, true);
+    fetchSnapshotMock.mockResolvedValue(snapshot({ name: 'Severance (renamed)' }));
+    await useWatchlist.getState().refreshAll();
+    expect(useWatchlist.getState().shows[0]).toMatchObject({ seenSeasons: [1], snapshot: { name: 'Severance (renamed)' } });
   });
 });
