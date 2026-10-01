@@ -141,7 +141,7 @@ export function seasonList(
         return { ...base, state: latest.kind, runtimeMinutes: null };
       }
       const beforeCurrent = currentNumber === null || season.season_number < currentNumber;
-      const aired = season.episode_count > 0 && season.air_date !== null && season.air_date <= today;
+      const aired = season.episode_count > 0 && (season.air_date === null || season.air_date <= today);
       return beforeCurrent && aired
         ? { ...base, state: 'complete', runtimeMinutes: estimate }
         : { ...base, state: 'upcoming', runtimeMinutes: null };

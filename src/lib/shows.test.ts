@@ -198,6 +198,40 @@ describe('seasonList', () => {
     expect(seasonList(details, latest, NOW)[2]).toMatchObject({ state: 'complete', runtimeMinutes: 200 });
   });
 
+  it('treats undated seasons before the current one as complete, as with One Piece', () => {
+    const onePiece = {
+      episode_run_time: [24],
+      seasons: [
+        { season_number: 1, episode_count: 61, air_date: '1999-10-20', name: 'East Blue' },
+        { season_number: 2, episode_count: 16, air_date: null, name: 'Entering into the Grand Line' },
+        { season_number: 21, episode_count: 197, air_date: '2019-07-08', name: 'Wano' },
+        { season_number: 22, episode_count: 67, air_date: null, name: 'Egghead' },
+        { season_number: 23, episode_count: 25, air_date: null, name: 'Elbaph' },
+      ],
+    };
+    const latest = { kind: 'airing' as const, seasonNumber: 23, airedCount: 4, episodeCount: 25, finaleDate: null };
+    expect(seasonList(onePiece, latest, NOW).map((s) => [s.seasonNumber, s.state])).toEqual([
+      [1, 'complete'],
+      [2, 'complete'],
+      [21, 'complete'],
+      [22, 'complete'],
+      [23, 'airing'],
+    ]);
+  });
+
+  it('keeps an earlier season upcoming when it has no episodes or a future date', () => {
+    const latest = { kind: 'airing' as const, seasonNumber: 3, airedCount: 1, episodeCount: 6, finaleDate: null };
+    const odd = {
+      episode_run_time: [],
+      seasons: [
+        { season_number: 1, episode_count: 0, air_date: null, name: 'Season 1' },
+        { season_number: 2, episode_count: 8, air_date: '2027-01-01', name: 'Season 2' },
+        { season_number: 3, episode_count: 6, air_date: '2026-09-16', name: 'Season 3' },
+      ],
+    };
+    expect(seasonList(odd, latest, NOW).map((s) => s.state)).toEqual(['upcoming', 'upcoming', 'airing']);
+  });
+
   it('leaves runtime unknown when TMDB has no episode length', () => {
     const latest = { kind: 'none' as const };
     expect(seasonList({ ...details, episode_run_time: [] }, latest, NOW)[0].runtimeMinutes).toBeNull();
