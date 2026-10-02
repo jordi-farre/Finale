@@ -94,6 +94,7 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="search" />
             <Stack.Screen name="settings" />
+            <Stack.Screen name="finished" />
             <Stack.Screen name="show/[id]" />
           </Stack>
         </ThemeProvider>

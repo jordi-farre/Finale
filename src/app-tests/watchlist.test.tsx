@@ -39,12 +39,45 @@ describe('watchlist', () => {
     });
     await render(<WatchlistScreen />);
     expect(screen.getByText('Ready to binge')).toBeOnTheScreen();
-    expect(screen.getByText('Season 2 to binge · 10 episodes · 8h 20m')).toBeOnTheScreen();
+    expect(screen.getByText('Season 2 to binge · 10 episodes')).toBeOnTheScreen();
     expect(screen.getByText('Season airing')).toBeOnTheScreen();
     expect(screen.getByText('Season 2 airing · 3 of 10 out')).toBeOnTheScreen();
     expect(screen.getByText('Waiting for new episodes')).toBeOnTheScreen();
     expect(screen.getByText('Season 3 announced')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Firefly')).toBeNull();
+    expect(screen.getByText('1 finished show')).toBeOnTheScreen();
+  });
+
+  it('opens finished shows from the footer and the top bar', async () => {
+    useWatchlist.setState({
+      hydrated: true,
+      shows: [
+        followed({ id: 1, name: 'Severance' }),
+        followed({ id: 2, name: 'Firefly', status: 'cancelled' }, { seenSeasons: [1, 2] }),
+        followed({ id: 3, name: 'Lost', status: 'ended' }, { seenSeasons: [1, 2] }),
+      ],
+    });
+    await render(<WatchlistScreen />);
+    await fireEvent.press(screen.getByText('2 finished shows'));
+    expect(router.push).toHaveBeenCalledWith('/finished');
+    await fireEvent.press(screen.getByLabelText('Finished shows'));
+    expect(router.push).toHaveBeenLastCalledWith('/finished');
+  });
+
+  it('says you are all caught up when every show is finished', async () => {
+    useWatchlist.setState({
+      hydrated: true,
+      shows: [followed({ name: 'Firefly', status: 'cancelled' }, { seenSeasons: [1, 2] })],
+    });
+    await render(<WatchlistScreen />);
     expect(screen.getByText('All caught up')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Firefly')).toBeNull();
+  });
+
+  it('keeps hours out of the list', async () => {
+    useWatchlist.setState({ hydrated: true, shows: [followed()] });
+    await render(<WatchlistScreen />);
+    expect(screen.queryByText(/\dh/)).toBeNull();
   });
 
   it('lists a show with an airing season under ready when older seasons are unseen', async () => {
@@ -60,7 +93,7 @@ describe('watchlist', () => {
     });
     await render(<WatchlistScreen />);
     expect(screen.getByText('Ready to binge')).toBeOnTheScreen();
-    expect(screen.getByText('2 seasons to binge · 20 episodes · 10h')).toBeOnTheScreen();
+    expect(screen.getByText('2 seasons to binge · 20 episodes')).toBeOnTheScreen();
     expect(screen.queryByText('Season airing')).toBeNull();
   });
 

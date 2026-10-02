@@ -14,7 +14,6 @@ export type SeasonState =
       airedCount: number;
       episodeCount: number | null;
       finaleDate: string | null;
-      runtimeSoFar?: number | null;
     }
   | { kind: 'upcoming'; seasonNumber: number; premiereDate: string | null }
   | { kind: 'none' };

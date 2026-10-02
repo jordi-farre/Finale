@@ -15,15 +15,18 @@
   Nov 4"), or upcoming. Tick the complete seasons you've seen; ticking one on a show you don't
   follow yet follows it, with an Undo.
 - **Watchlist**, grouped by what you can watch next: *Ready to binge* (any complete season you
-  haven't seen, even while a newer one airs), *Season airing*, *Waiting for new episodes*, and
-  *All caught up* (shows that are over and fully seen).
+  haven't seen, even while a newer one airs), *Season airing*, and *Waiting for new episodes*.
+- **Finished**: shows that are over (ended or cancelled) and fully seen move off the watchlist to
+  their own screen, reachable from the top bar or a "N finished shows" link at the bottom of the
+  list. It's automatic, unlike Punch's manual archive: untick a season, or have a cancelled show
+  come back, and it returns to the watchlist.
 - **Season notifications** for followed shows: when a season starts ("you'll get another
   notification when the whole season is out"), when it's complete, or when the show is cancelled.
   A season that drops all at once gets a single notification. Tapping one opens the show. The
   show page says exactly what you'll be notified about, and warns if notifications are blocked.
-- **Hours everywhere**: each season, the watchlist and airing seasons ("3 of 8 out (2h 15m)") show
-  binge time. TMDB's typical episode length is often empty, so other seasons are estimated from the
-  average episode runtime of the current season.
+- **Binge time on the show page**: each season lists its runtime. TMDB's typical episode length is
+  often empty, so seasons other than the current one are estimated from the current season's
+  average episode runtime. The watchlist sticks to episode counts.
 - **Settings**: system / light / dark theme, a switch for season notifications (with a pointer to
   system settings when Android blocks them), and the app version with its build number.
 - Local-only persistence (no account, no server of our own), one Material 3
@@ -118,7 +121,7 @@ index.ts          entry point: defines the background task, then starts Expo Rou
 assets/source/    icon generator (the PNGs in assets/images are its output)
 store/play/       Play Store listing copy, feature graphic, 512px icon, privacy policy page
 src/
-  app/            expo-router screens: watchlist, search, show detail, settings
+  app/            expo-router screens: watchlist, finished, search, show detail, settings
   app-tests/      tests for the screens above
   components/     ShowRow, SeasonRow, Poster, StatusChip, EmptyState, MissingTokenBanner
   lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,

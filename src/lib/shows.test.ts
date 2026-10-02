@@ -85,7 +85,6 @@ describe('seasonState', () => {
       airedCount: 4,
       episodeCount: null,
       finaleDate: null,
-      runtimeSoFar: 200,
     });
   });
 
@@ -112,7 +111,6 @@ describe('seasonState', () => {
       airedCount: 2,
       episodeCount: 4,
       finaleDate: '2026-10-14',
-      runtimeSoFar: 100,
     });
   });
 
@@ -130,7 +128,6 @@ describe('seasonState', () => {
       airedCount: 2,
       episodeCount: null,
       finaleDate: null,
-      runtimeSoFar: 100,
     });
   });
 
@@ -171,9 +168,9 @@ describe('formatRuntime', () => {
 });
 
 describe('seasonSummary', () => {
-  it('describes a complete season with its binge time', () => {
+  it('describes a complete season', () => {
     expect(seasonSummary({ kind: 'complete', seasonNumber: 3, episodeCount: 10, runtimeMinutes: 520, completedOn: null }, NOW)).toBe(
-      'Season 3 complete · 10 episodes · 8h 40m',
+      'Season 3 complete · 10 episodes',
     );
   });
 
@@ -181,12 +178,6 @@ describe('seasonSummary', () => {
     expect(seasonSummary({ kind: 'airing', seasonNumber: 2, airedCount: 4, episodeCount: 10, finaleDate: '2026-10-12' }, NOW)).toBe(
       'Season 2 airing · 4 of 10 out · finale Oct 12',
     );
-  });
-
-  it('adds the hours already out to an airing season', () => {
-    expect(
-      seasonSummary({ kind: 'airing', seasonNumber: 23, airedCount: 25, episodeCount: null, finaleDate: null, runtimeSoFar: 600 }, NOW),
-    ).toBe('Season 23 airing · 25 episodes out (10h)');
   });
 
   it('describes an airing season of unknown length', () => {
@@ -331,11 +322,11 @@ describe('watchlistGroup', () => {
 
 describe('watchlistDetail', () => {
   it('describes a single season to binge', () => {
-    expect(watchlistDetail({ ...followed(), seenSeasons: [1] }, NOW)).toBe('Season 2 to binge · 10 episodes · 8h 20m');
+    expect(watchlistDetail({ ...followed(), seenSeasons: [1] }, NOW)).toBe('Season 2 to binge · 10 episodes');
   });
 
   it('adds up several seasons to binge', () => {
-    expect(watchlistDetail(followed(), NOW)).toBe('2 seasons to binge · 19 episodes · 15h 50m');
+    expect(watchlistDetail(followed(), NOW)).toBe('2 seasons to binge · 19 episodes');
   });
 
   it('describes the airing season when caught up', () => {

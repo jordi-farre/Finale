@@ -113,7 +113,6 @@ export function seasonState(
     airedCount: aired.length,
     episodeCount: allListedAired ? null : episodes.length,
     finaleDate: allListedAired ? null : (lastEpisode.air_date ?? null),
-    runtimeSoFar: totalRuntime(aired, perEpisode),
   };
 }
 
@@ -204,16 +203,13 @@ function plural(count: number, word: string): string {
 export function seasonSummary(state: SeasonState, now: Date = new Date()): string | null {
   switch (state.kind) {
     case 'complete': {
-      const parts = [`Season ${state.seasonNumber} complete`, plural(state.episodeCount, 'episode')];
-      if (state.runtimeMinutes) parts.push(formatRuntime(state.runtimeMinutes));
-      return parts.join(' · ');
+      return [`Season ${state.seasonNumber} complete`, plural(state.episodeCount, 'episode')].join(' · ');
     }
     case 'airing': {
-      const count =
+      const progress =
         state.episodeCount === null
           ? `${plural(state.airedCount, 'episode')} out`
           : `${state.airedCount} of ${state.episodeCount} out`;
-      const progress = state.runtimeSoFar ? `${count} (${formatRuntime(state.runtimeSoFar)})` : count;
       const parts = [`Season ${state.seasonNumber} airing`, progress];
       if (state.finaleDate) parts.push(`finale ${formatDay(state.finaleDate, now)}`);
       return parts.join(' · ');
@@ -254,29 +250,15 @@ export function watchlistGroup(show: Pick<FollowedShow, 'snapshot' | 'seenSeason
   return 'waiting';
 }
 
-function sumRuntime(seasons: SeasonInfo[]): number | null {
-  let total = 0;
-  for (const season of seasons) {
-    if (season.runtimeMinutes === null) return null;
-    total += season.runtimeMinutes;
-  }
-  return total;
-}
-
 export function watchlistDetail(show: Pick<FollowedShow, 'snapshot' | 'seenSeasons'>, now: Date = new Date()): string | null {
   const unseen = unseenCompleteSeasons(show);
   if (unseen.length === 1) {
     const [season] = unseen;
-    const parts = [`Season ${season.seasonNumber} to binge`, plural(season.episodeCount, 'episode')];
-    if (season.runtimeMinutes) parts.push(formatRuntime(season.runtimeMinutes));
-    return parts.join(' · ');
+    return `Season ${season.seasonNumber} to binge · ${plural(season.episodeCount, 'episode')}`;
   }
   if (unseen.length > 1) {
-    const runtime = sumRuntime(unseen);
     const episodes = unseen.reduce((total, season) => total + season.episodeCount, 0);
-    const parts = [`${unseen.length} seasons to binge`, plural(episodes, 'episode')];
-    if (runtime) parts.push(formatRuntime(runtime));
-    return parts.join(' · ');
+    return `${unseen.length} seasons to binge · ${plural(episodes, 'episode')}`;
   }
   const { latestSeason, status } = show.snapshot;
   if (latestSeason.kind === 'airing' || latestSeason.kind === 'upcoming') return seasonSummary(latestSeason, now);
