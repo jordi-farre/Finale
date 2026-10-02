@@ -89,6 +89,8 @@ export function seasonState(
 
   const moreAnnouncedThisSeason = details.next_episode_to_air?.season_number === seasonNumber;
 
+  const perEpisode = episodeLength(details, season);
+
   if (
     aired.length === episodes.length &&
     !moreAnnouncedThisSeason &&
@@ -98,7 +100,7 @@ export function seasonState(
       kind: 'complete',
       seasonNumber,
       episodeCount: episodes.length,
-      runtimeMinutes: totalRuntime(episodes, details.episode_run_time),
+      runtimeMinutes: totalRuntime(episodes, perEpisode),
       completedOn: aired[aired.length - 1].air_date,
     };
   }
@@ -111,11 +113,21 @@ export function seasonState(
     airedCount: aired.length,
     episodeCount: allListedAired ? null : episodes.length,
     finaleDate: allListedAired ? null : (lastEpisode.air_date ?? null),
+    runtimeSoFar: totalRuntime(aired, perEpisode),
   };
 }
 
-function totalRuntime(episodes: TmdbSeasonDetails['episodes'], fallbackRuntimes: number[]): number | null {
-  const fallback = fallbackRuntimes[0] ?? null;
+export function episodeLength(
+  details: Pick<TmdbShowDetails, 'episode_run_time'>,
+  season: TmdbSeasonDetails | null,
+): number | null {
+  if (details.episode_run_time[0]) return details.episode_run_time[0];
+  const known = (season?.episodes ?? []).map((episode) => episode.runtime).filter((minutes): minutes is number => !!minutes);
+  if (known.length === 0) return null;
+  return Math.round(known.reduce((total, minutes) => total + minutes, 0) / known.length);
+}
+
+function totalRuntime(episodes: TmdbSeasonDetails['episodes'], fallback: number | null): number | null {
   let total = 0;
   for (const episode of episodes) {
     const minutes = episode.runtime ?? fallback;
@@ -140,18 +152,18 @@ export function buildSnapshot(
     status: mapStatus(details.status),
     seasonCount: details.seasons.filter((s) => s.season_number > 0 && s.episode_count > 0).length,
     latestSeason,
-    seasons: seasonList(details, latestSeason, now),
+    seasons: seasonList(details, latestSeason, episodeLength(details, season), now),
     fetchedAt: now.toISOString(),
   };
 }
 
 export function seasonList(
-  details: Pick<TmdbShowDetails, 'seasons' | 'episode_run_time'>,
+  details: Pick<TmdbShowDetails, 'seasons'>,
   latest: SeasonState,
+  perEpisode: number | null,
   now: Date = new Date(),
 ): SeasonInfo[] {
   const today = toIsoDate(now);
-  const perEpisode = details.episode_run_time[0] ?? null;
   const currentNumber = latest.kind === 'none' ? null : latest.seasonNumber;
   return details.seasons
     .filter((season) => season.season_number > 0)
@@ -163,13 +175,13 @@ export function seasonList(
         if (latest.kind === 'complete') {
           return { ...base, episodeCount: latest.episodeCount, state: 'complete', runtimeMinutes: latest.runtimeMinutes ?? estimate };
         }
-        return { ...base, state: latest.kind, runtimeMinutes: null };
+        return { ...base, state: latest.kind, runtimeMinutes: estimate };
       }
       const beforeCurrent = currentNumber === null || season.season_number < currentNumber;
       const aired = season.episode_count > 0 && (season.air_date === null || season.air_date <= today);
       return beforeCurrent && aired
         ? { ...base, state: 'complete', runtimeMinutes: estimate }
-        : { ...base, state: 'upcoming', runtimeMinutes: null };
+        : { ...base, state: 'upcoming', runtimeMinutes: estimate };
     });
 }
 
@@ -197,10 +209,11 @@ export function seasonSummary(state: SeasonState, now: Date = new Date()): strin
       return parts.join(' · ');
     }
     case 'airing': {
-      const progress =
+      const count =
         state.episodeCount === null
           ? `${plural(state.airedCount, 'episode')} out`
           : `${state.airedCount} of ${state.episodeCount} out`;
+      const progress = state.runtimeSoFar ? `${count} (${formatRuntime(state.runtimeSoFar)})` : count;
       const parts = [`Season ${state.seasonNumber} airing`, progress];
       if (state.finaleDate) parts.push(`finale ${formatDay(state.finaleDate, now)}`);
       return parts.join(' · ');

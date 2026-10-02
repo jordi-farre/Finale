@@ -1,6 +1,7 @@
 import {
   buildSnapshot,
   currentSeasonNumber,
+  episodeLength,
   endingNote,
   formatRuntime,
   mapStatus,
@@ -84,6 +85,7 @@ describe('seasonState', () => {
       airedCount: 4,
       episodeCount: null,
       finaleDate: null,
+      runtimeSoFar: 200,
     });
   });
 
@@ -104,7 +106,14 @@ describe('seasonState', () => {
 
   it('is airing with a finale date while episodes are still to come', () => {
     const state = seasonState(seasonDetails(3, ['2026-09-16', '2026-09-23', '2026-10-07', '2026-10-14']), details, NOW);
-    expect(state).toEqual({ kind: 'airing', seasonNumber: 3, airedCount: 2, episodeCount: 4, finaleDate: '2026-10-14' });
+    expect(state).toEqual({
+      kind: 'airing',
+      seasonNumber: 3,
+      airedCount: 2,
+      episodeCount: 4,
+      finaleDate: '2026-10-14',
+      runtimeSoFar: 100,
+    });
   });
 
   it('is airing with an unknown finale when later episodes have no date yet', () => {
@@ -115,7 +124,14 @@ describe('seasonState', () => {
   it('is still airing when another episode is announced this season, even after a finale label', () => {
     const announced = { ...details, next_episode_to_air: { season_number: 3, episode_number: 3, air_date: null } };
     const state = seasonState(seasonDetails(3, ['2026-09-16', '2026-09-23'], 50, 'finale'), announced, NOW);
-    expect(state).toEqual({ kind: 'airing', seasonNumber: 3, airedCount: 2, episodeCount: null, finaleDate: null });
+    expect(state).toEqual({
+      kind: 'airing',
+      seasonNumber: 3,
+      airedCount: 2,
+      episodeCount: null,
+      finaleDate: null,
+      runtimeSoFar: 100,
+    });
   });
 
   it('is upcoming when nothing has aired', () => {
@@ -167,6 +183,12 @@ describe('seasonSummary', () => {
     );
   });
 
+  it('adds the hours already out to an airing season', () => {
+    expect(
+      seasonSummary({ kind: 'airing', seasonNumber: 23, airedCount: 25, episodeCount: null, finaleDate: null, runtimeSoFar: 600 }, NOW),
+    ).toBe('Season 23 airing · 25 episodes out (10h)');
+  });
+
   it('describes an airing season of unknown length', () => {
     expect(seasonSummary({ kind: 'airing', seasonNumber: 2, airedCount: 1, episodeCount: null, finaleDate: null }, NOW)).toBe(
       'Season 2 airing · 1 episode out',
@@ -202,7 +224,6 @@ describe('endingNote', () => {
 
 describe('seasonList', () => {
   const details = {
-    episode_run_time: [30],
     seasons: [
       { season_number: 0, episode_count: 2, air_date: '2019-01-01', name: 'Specials' },
       { season_number: 2, episode_count: 8, air_date: '2021-03-01', name: 'Season 2' },
@@ -214,22 +235,21 @@ describe('seasonList', () => {
 
   it('marks earlier seasons complete, the current one from its state, and later ones upcoming', () => {
     const latest = { kind: 'airing' as const, seasonNumber: 3, airedCount: 2, episodeCount: 6, finaleDate: '2026-10-21' };
-    expect(seasonList(details, latest, NOW)).toEqual([
+    expect(seasonList(details, latest, 30, NOW)).toEqual([
       { seasonNumber: 1, episodeCount: 10, airDate: '2019-03-01', state: 'complete', runtimeMinutes: 300 },
       { seasonNumber: 2, episodeCount: 8, airDate: '2021-03-01', state: 'complete', runtimeMinutes: 240 },
-      { seasonNumber: 3, episodeCount: 6, airDate: '2026-09-16', state: 'airing', runtimeMinutes: null },
+      { seasonNumber: 3, episodeCount: 6, airDate: '2026-09-16', state: 'airing', runtimeMinutes: 180 },
       { seasonNumber: 4, episodeCount: 0, airDate: null, state: 'upcoming', runtimeMinutes: null },
     ]);
   });
 
   it('uses the exact runtime of a complete current season', () => {
     const latest = { kind: 'complete' as const, seasonNumber: 3, episodeCount: 6, runtimeMinutes: 200, completedOn: '2026-09-28' };
-    expect(seasonList(details, latest, NOW)[2]).toMatchObject({ state: 'complete', runtimeMinutes: 200 });
+    expect(seasonList(details, latest, 30, NOW)[2]).toMatchObject({ state: 'complete', runtimeMinutes: 200 });
   });
 
   it('treats undated seasons before the current one as complete, as with One Piece', () => {
     const onePiece = {
-      episode_run_time: [24],
       seasons: [
         { season_number: 1, episode_count: 61, air_date: '1999-10-20', name: 'East Blue' },
         { season_number: 2, episode_count: 16, air_date: null, name: 'Entering into the Grand Line' },
@@ -239,7 +259,7 @@ describe('seasonList', () => {
       ],
     };
     const latest = { kind: 'airing' as const, seasonNumber: 23, airedCount: 4, episodeCount: 25, finaleDate: null };
-    expect(seasonList(onePiece, latest, NOW).map((s) => [s.seasonNumber, s.state])).toEqual([
+    expect(seasonList(onePiece, latest, 24, NOW).map((s) => [s.seasonNumber, s.state])).toEqual([
       [1, 'complete'],
       [2, 'complete'],
       [21, 'complete'],
@@ -251,19 +271,35 @@ describe('seasonList', () => {
   it('keeps an earlier season upcoming when it has no episodes or a future date', () => {
     const latest = { kind: 'airing' as const, seasonNumber: 3, airedCount: 1, episodeCount: 6, finaleDate: null };
     const odd = {
-      episode_run_time: [],
       seasons: [
         { season_number: 1, episode_count: 0, air_date: null, name: 'Season 1' },
         { season_number: 2, episode_count: 8, air_date: '2027-01-01', name: 'Season 2' },
         { season_number: 3, episode_count: 6, air_date: '2026-09-16', name: 'Season 3' },
       ],
     };
-    expect(seasonList(odd, latest, NOW).map((s) => s.state)).toEqual(['upcoming', 'upcoming', 'airing']);
+    expect(seasonList(odd, latest, null, NOW).map((s) => s.state)).toEqual(['upcoming', 'upcoming', 'airing']);
   });
 
-  it('leaves runtime unknown when TMDB has no episode length', () => {
-    const latest = { kind: 'none' as const };
-    expect(seasonList({ ...details, episode_run_time: [] }, latest, NOW)[0].runtimeMinutes).toBeNull();
+  it('leaves runtime unknown without an episode length', () => {
+    expect(seasonList(details, { kind: 'none' }, null, NOW)[0].runtimeMinutes).toBeNull();
+  });
+});
+
+describe('episodeLength', () => {
+  it("prefers TMDB's typical episode length", () => {
+    expect(episodeLength({ episode_run_time: [42] }, seasonDetails(1, ['2026-01-01'], 60))).toBe(42);
+  });
+
+  it('falls back to the average runtime of the season episodes, as for most shows today', () => {
+    const season = seasonDetails(1, ['2026-01-01', '2026-01-08', '2026-01-15'], 50);
+    season.episodes[2].runtime = 65;
+    season.episodes[1].runtime = null;
+    expect(episodeLength({ episode_run_time: [] }, season)).toBe(58);
+  });
+
+  it('is unknown when nothing has a runtime', () => {
+    expect(episodeLength({ episode_run_time: [] }, seasonDetails(1, ['2026-01-01'], null))).toBeNull();
+    expect(episodeLength({ episode_run_time: [] }, null)).toBeNull();
   });
 });
 
