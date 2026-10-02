@@ -4,7 +4,7 @@ import { mergeNotified, pendingAlerts, type ShowAlert } from '@/lib/alerts';
 import { presentAlerts } from '@/lib/notifications';
 import { load, save } from '@/lib/storage';
 import { fetchSnapshot } from '@/lib/tmdb';
-import type { FollowedShow, ShowSnapshot } from '@/lib/types';
+import type { FollowedShow, PersistedState, ShowSnapshot } from '@/lib/types';
 
 type WatchlistState = {
   shows: FollowedShow[];
@@ -17,6 +17,7 @@ type WatchlistState = {
   restoreSeen: (id: number, seenSeasons: number[]) => void;
   updateSnapshot: (snapshot: ShowSnapshot) => void;
   refreshAll: () => Promise<ShowAlert[]>;
+  replaceAll: (next: PersistedState) => void;
 };
 
 function persist(shows: FollowedShow[]) {
@@ -83,6 +84,11 @@ export const useWatchlist = create<WatchlistState>((set, get) => ({
     const shows = get().shows.map((show) => (show.id === snapshot.id ? { ...show, snapshot } : show));
     set({ shows });
     persist(shows);
+  },
+
+  replaceAll: (next) => {
+    set({ shows: next.shows });
+    persist(next.shows);
   },
 
   refreshAll: async () => {

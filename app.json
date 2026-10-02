@@ -48,6 +48,7 @@
         }
       ],
       "expo-background-task",
+      "expo-sharing",
       [
         "expo-build-properties",
         {

@@ -4,7 +4,7 @@ import { presentAlerts } from '@/lib/notifications';
 import { STORAGE_KEY_FOR_TESTS } from '@/lib/storage';
 import { fetchSnapshot } from '@/lib/tmdb';
 import { useWatchlist } from '@/store/useWatchlist';
-import { season, snapshot } from '@/test-utils/fixtures';
+import { followed, season, snapshot } from '@/test-utils/fixtures';
 
 jest.mock('@/lib/tmdb', () => ({ ...jest.requireActual('@/lib/tmdb'), fetchSnapshot: jest.fn() }));
 jest.mock('@/lib/notifications', () => ({ presentAlerts: jest.fn().mockResolvedValue(undefined) }));
@@ -119,5 +119,12 @@ describe('useWatchlist', () => {
     fetchSnapshotMock.mockResolvedValue(snapshot({ name: 'Severance (renamed)' }));
     await useWatchlist.getState().refreshAll();
     expect(useWatchlist.getState().shows[0]).toMatchObject({ seenSeasons: [1], snapshot: { name: 'Severance (renamed)' } });
+  });
+
+  it('replaces everything with a restored backup and saves it', async () => {
+    useWatchlist.getState().follow(snapshot({ id: 1, name: 'Severance' }));
+    useWatchlist.getState().replaceAll({ version: 1, shows: [followed({ id: 2, name: 'Andor' }, { seenSeasons: [1] })] });
+    expect(useWatchlist.getState().shows.map((show) => show.id)).toEqual([2]);
+    expect((await persisted()).shows[0]).toMatchObject({ id: 2, seenSeasons: [1] });
   });
 });

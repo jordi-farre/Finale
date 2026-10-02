@@ -1,6 +1,6 @@
 # Finale Privacy Policy
 
-**Effective 2026-09-30**
+**Effective 2026-10-02**
 
 Finale has no account, no server of its own, and no analytics. It does talk to one outside
 service, The Movie Database (TMDB), to look up shows. Here's the whole picture.
@@ -29,6 +29,11 @@ covered by the [TMDB privacy policy](https://www.themoviedb.org/privacy-policy).
 On your device. The list of shows you follow is saved with your phone's operating system under the
 key `finale:v1` (see [`src/lib/storage.ts`](src/lib/storage.ts)). Uninstalling the app deletes it
 permanently.
+
+You can also export a backup file from Settings. Finale only creates the file and hands it to your
+phone's share sheet, so where it goes (a cloud drive, an email, a chat) is entirely your choice and
+it is never sent anywhere by the app itself. Importing reads a file you pick and replaces what's on
+the device.
 
 ## Backing up a lost phone
 

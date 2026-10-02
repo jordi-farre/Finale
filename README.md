@@ -29,6 +29,12 @@
   average episode runtime. The watchlist sticks to episode counts.
 - **Settings**: system / light / dark theme, a switch for season notifications (with a pointer to
   system settings when Android blocks them), and the app version with its build number.
+- **Backup** (Settings), same as Punch's: export everything (followed shows, their last known
+  details, seen seasons, and which alerts were already sent) to a JSON file and share it wherever
+  you like, or import one to replace what's on the device. Restoring works offline, doesn't replay
+  old notifications, and refreshes from TMDB right after. The way to move data between installs,
+  e.g. from a sideloaded build to the Play Store one (different signing keys, so Android can't
+  update in place and the app has to be uninstalled first).
 - Local-only persistence (no account, no server of our own), one Material 3
   palette (amber, generated from a single seed color) driving both Paper components and Tailwind
   classes.
@@ -123,9 +129,10 @@ store/play/       Play Store listing copy, feature graphic, 512px icon, privacy 
 src/
   app/            expo-router screens: watchlist, finished, search, show detail, settings
   app-tests/      tests for the screens above
-  components/     ShowRow, SeasonRow, Poster, StatusChip, EmptyState, MissingTokenBanner
+  components/     ShowRow, SeasonRow, Poster, StatusChip, EmptyState, MissingTokenBanner,
+                  BackupSection
   lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,
-                  background refresh, AsyncStorage I/O, types
+                  background refresh, AsyncStorage I/O, backup files, types
   store/          zustand stores: watchlist, theme preference, notification setting
   theme/          MD3 + Tailwind tokens, the Paper theme, NativeWind interop
   test-utils/     render wrapper and TMDB fixtures

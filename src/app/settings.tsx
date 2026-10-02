@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Linking, ScrollView, View } from 'react-native';
 import { Appbar, Button, SegmentedButtons, Switch, Text, useTheme } from 'react-native-paper';
 
+import { BackupSection } from '@/components/BackupSection';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { useAlertSettings } from '@/store/useAlertSettings';
 import { useThemePreference, type ThemePreference } from '@/store/useThemePreference';
@@ -72,6 +73,8 @@ export default function SettingsScreen() {
             </View>
           ) : null}
         </View>
+
+        <BackupSection />
 
         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
           {versionLabel()}
