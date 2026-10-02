@@ -24,7 +24,7 @@ export default function FinishedScreen() {
 
       {finished.length === 0 ? (
         <EmptyState
-          icon="archive-outline"
+          icon="flag-checkered"
           title="No finished shows yet"
           message="When a show you follow has ended and you've seen every season, it moves here."
         />

@@ -38,7 +38,7 @@ export default function WatchlistScreen() {
       <Appbar.Header>
         <Appbar.Content title="Watchlist" />
         <Appbar.Action icon="magnify" accessibilityLabel="Search shows" onPress={() => router.push('/search')} />
-        <Appbar.Action icon="archive-outline" accessibilityLabel="Finished shows" onPress={openFinished} />
+        <Appbar.Action icon="flag-checkered" accessibilityLabel="Finished shows" onPress={openFinished} />
         <Appbar.Action icon="cog-outline" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
       </Appbar.Header>
       <MissingTokenBanner />
@@ -83,7 +83,8 @@ export default function WatchlistScreen() {
           ListFooterComponent={
             finishedCount > 0 ? (
               <TouchableRipple onPress={openFinished} accessibilityRole="button" className="mt-md">
-                <View className="flex-row items-center justify-center gap-xs py-md">
+                <View className="flex-row items-center justify-center gap-sm py-md">
+                  <Icon source="flag-checkered" size={20} color={theme.colors.onSurfaceVariant} />
                   <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
                     {`${finishedCount} finished show${finishedCount === 1 ? '' : 's'}`}
                   </Text>
