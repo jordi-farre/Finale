@@ -11,6 +11,7 @@ import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { endingNote, followHint } from '@/lib/shows';
 import { fetchSnapshot } from '@/lib/tmdb';
 import type { ShowSnapshot } from '@/lib/types';
+import { useAlertSettings } from '@/store/useAlertSettings';
 import { useWatchlist } from '@/store/useWatchlist';
 
 export default function ShowScreen() {
@@ -25,6 +26,7 @@ export default function ShowScreen() {
   const restoreSeen = useWatchlist((state) => state.restoreSeen);
   const updateSnapshot = useWatchlist((state) => state.updateSnapshot);
   const notifications = useNotificationPermission();
+  const alertsEnabled = useAlertSettings((state) => state.enabled);
 
   const [fetched, setFetched] = useState<ShowSnapshot | null>(null);
   const [error, setError] = useState(false);
@@ -52,7 +54,7 @@ export default function ShowScreen() {
 
   function startFollowing(current: ShowSnapshot) {
     follow(current);
-    void notifications.request();
+    if (alertsEnabled) void notifications.request();
   }
 
   function toggleSeen(current: ShowSnapshot, seasonNumber: number) {
@@ -89,7 +91,8 @@ export default function ShowScreen() {
 
   const ending = endingNote(snapshot);
   const cancelled = snapshot.status === 'cancelled';
-  const showNotificationWarning = following && notifications.status === 'blocked';
+  const showBlockedWarning = following && alertsEnabled && notifications.status === 'blocked';
+  const showDisabledNote = following && !alertsEnabled;
 
   return (
     <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
@@ -100,11 +103,11 @@ export default function ShowScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: insets.bottom + 24 }}>
         <View className="flex-row gap-md">
-          <Poster path={snapshot.posterPath} width={120} />
+          <Poster path={snapshot.posterPath} width={140} />
           <View className="flex-1 gap-sm">
-            <Text variant="headlineSmall">{snapshot.name}</Text>
+            <Text variant="headlineMedium">{snapshot.name}</Text>
             {snapshot.firstAirYear ? (
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
                 {`${snapshot.firstAirYear} · ${snapshot.seasonCount} season${snapshot.seasonCount === 1 ? '' : 's'}`}
               </Text>
             ) : null}
@@ -123,7 +126,7 @@ export default function ShowScreen() {
                 color={cancelled ? theme.colors.onErrorContainer : theme.colors.onSecondaryContainer}
               />
               <Text
-                variant="bodyMedium"
+                variant="bodyLarge"
                 className="flex-1"
                 style={{ color: cancelled ? theme.colors.onErrorContainer : theme.colors.onSecondaryContainer }}>
                 {ending}
@@ -139,15 +142,30 @@ export default function ShowScreen() {
             onPress={() => (following ? unfollow(snapshot.id) : startFollowing(snapshot))}>
             {following ? 'Following' : 'Follow'}
           </Button>
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-            {followHint(snapshot, following)}
-          </Text>
-          {showNotificationWarning ? (
+          {alertsEnabled ? (
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
+              {followHint(snapshot, following)}
+            </Text>
+          ) : null}
+          {showDisabledNote ? (
+            <View
+              className="flex-row items-center gap-sm rounded-md p-sm"
+              style={{ backgroundColor: theme.colors.surfaceVariant }}>
+              <Icon source="bell-off-outline" size={20} color={theme.colors.onSurfaceVariant} />
+              <Text variant="bodyMedium" className="flex-1" style={{ color: theme.colors.onSurfaceVariant }}>
+                Season notifications are turned off.
+              </Text>
+              <Button compact onPress={() => router.push('/settings')}>
+                Settings
+              </Button>
+            </View>
+          ) : null}
+          {showBlockedWarning ? (
             <View
               className="flex-row items-center gap-sm rounded-md p-sm"
               style={{ backgroundColor: theme.colors.errorContainer }}>
               <Icon source="bell-off-outline" size={20} color={theme.colors.onErrorContainer} />
-              <Text variant="bodySmall" className="flex-1" style={{ color: theme.colors.onErrorContainer }}>
+              <Text variant="bodyMedium" className="flex-1" style={{ color: theme.colors.onErrorContainer }}>
                 Notifications are off for Finale, so you won&apos;t get season alerts.
               </Text>
               <Button compact textColor={theme.colors.onErrorContainer} onPress={() => void Linking.openSettings()}>
@@ -159,8 +177,8 @@ export default function ShowScreen() {
 
         {snapshot.seasons.length > 0 ? (
           <View>
-            <Text variant="titleMedium">Seasons</Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            <Text variant="titleLarge">Seasons</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
               Tick the seasons you&apos;ve seen. The rest show up as ready to binge.
             </Text>
             {snapshot.seasons.map((season) => (
@@ -176,7 +194,7 @@ export default function ShowScreen() {
         ) : null}
 
         {snapshot.overview ? (
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+          <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
             {snapshot.overview}
           </Text>
         ) : null}

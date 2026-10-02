@@ -21,7 +21,12 @@
   notification when the whole season is out"), when it's complete, or when the show is cancelled.
   A season that drops all at once gets a single notification. Tapping one opens the show. The
   show page says exactly what you'll be notified about, and warns if notifications are blocked.
-- Local-only persistence (no account, no server of our own), light/dark mode, one Material 3
+- **Hours everywhere**: each season, the watchlist and airing seasons ("3 of 8 out (2h 15m)") show
+  binge time. TMDB's typical episode length is often empty, so other seasons are estimated from the
+  average episode runtime of the current season.
+- **Settings**: system / light / dark theme, a switch for season notifications (with a pointer to
+  system settings when Android blocks them), and the app version with its build number.
+- Local-only persistence (no account, no server of our own), one Material 3
   palette (amber, generated from a single seed color) driving both Paper components and Tailwind
   classes.
 
@@ -113,12 +118,12 @@ index.ts          entry point: defines the background task, then starts Expo Rou
 assets/source/    icon generator (the PNGs in assets/images are its output)
 store/play/       Play Store listing copy, feature graphic, 512px icon, privacy policy page
 src/
-  app/            expo-router screens: watchlist, search, show detail
+  app/            expo-router screens: watchlist, search, show detail, settings
   app-tests/      tests for the screens above
   components/     ShowRow, SeasonRow, Poster, StatusChip, EmptyState, MissingTokenBanner
   lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,
                   background refresh, AsyncStorage I/O, types
-  store/          the zustand watchlist store
+  store/          zustand stores: watchlist, theme preference, notification setting
   theme/          MD3 + Tailwind tokens, the Paper theme, NativeWind interop
   test-utils/     render wrapper and TMDB fixtures
 ```
@@ -127,8 +132,9 @@ src/
 
 For each show the app picks the current season (the season of the next announced episode, else
 of the last aired one) and loads its episode list. Earlier seasons count as complete once their
-first air date has passed, later ones as upcoming; their binge time is estimated from TMDB's
-typical episode length. See [`src/lib/shows.ts`](src/lib/shows.ts). For the current season:
+first air date has passed (or they have episodes but no date at all), later ones as upcoming; their
+binge time is estimated from TMDB's typical episode length, or failing that from the current season's
+average episode runtime. See [`src/lib/shows.ts`](src/lib/shows.ts). For the current season:
 
 - **Complete**: every listed episode has aired, TMDB announces no further episode in that season,
   and there's a positive sign it's over: the last episode is marked as the season finale, the show

@@ -30,14 +30,14 @@ export function SeasonRow({ season, latest, seen, onToggleSeen }: Props) {
       accessibilityRole="checkbox"
       accessibilityState={{ checked: seen, disabled: !canMark }}
       accessibilityLabel={`${label}, ${seen ? 'seen' : 'not seen'}`}>
-      <View className="flex-row items-center gap-sm py-sm">
+      <View className="flex-row items-center gap-sm py-md">
         <View className="flex-1 gap-xs">
-          <Text variant="titleMedium">{label}</Text>
-          <Text variant="bodySmall" style={{ color: stateColor }}>
+          <Text variant="titleLarge">{label}</Text>
+          <Text variant="bodyMedium" style={{ color: stateColor }}>
             {seasonStateLabel(season, latest)}
           </Text>
           {detail ? (
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
               {detail}
             </Text>
           ) : null}
@@ -46,10 +46,10 @@ export function SeasonRow({ season, latest, seen, onToggleSeen }: Props) {
           <View className="items-center gap-xs" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
             <Icon
               source={seen ? 'checkbox-marked' : 'checkbox-blank-outline'}
-              size={26}
+              size={32}
               color={seen ? theme.colors.primary : theme.colors.onSurfaceVariant}
             />
-            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
               Seen
             </Text>
           </View>

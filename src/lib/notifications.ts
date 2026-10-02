@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { ShowAlert } from '@/lib/alerts';
+import { useAlertSettings } from '@/store/useAlertSettings';
 
 const CHANNEL_ID = 'seasons';
 
@@ -46,6 +47,8 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
 export async function presentAlerts(alerts: ShowAlert[]): Promise<void> {
   if (alerts.length === 0) return;
+  if (!useAlertSettings.getState().hydrated) await useAlertSettings.getState().hydrate();
+  if (!useAlertSettings.getState().enabled) return;
   if ((await getNotificationPermissionStatus()) !== 'granted') return;
   await ensureChannel();
   for (const alert of alerts) {

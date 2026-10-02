@@ -37,6 +37,7 @@ export default function WatchlistScreen() {
       <Appbar.Header>
         <Appbar.Content title="Watchlist" />
         <Appbar.Action icon="magnify" accessibilityLabel="Search shows" onPress={() => router.push('/search')} />
+        <Appbar.Action icon="cog-outline" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
       </Appbar.Header>
       <MissingTokenBanner />
 
@@ -55,7 +56,7 @@ export default function WatchlistScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} />}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
-            <Text variant="titleSmall" className="px-md pb-xs pt-md" style={{ color: theme.colors.primary }}>
+            <Text variant="titleMedium" className="px-md pb-xs pt-lg" style={{ color: theme.colors.primary }}>
               {section.title}
             </Text>
           )}

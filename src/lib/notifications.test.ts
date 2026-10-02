@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 
 import { presentAlerts, requestNotificationPermission, showIdFromResponse } from '@/lib/notifications';
+import { useAlertSettings } from '@/store/useAlertSettings';
 
 const permissions = jest.mocked(Notifications.getPermissionsAsync);
 const schedule = jest.mocked(Notifications.scheduleNotificationAsync);
@@ -19,6 +20,13 @@ describe('presentAlerts', () => {
       content: { title: alert.title, body: alert.body, data: { showId: 7 } },
       trigger: null,
     });
+  });
+
+  it('stays silent when season notifications are turned off', async () => {
+    permissions.mockResolvedValue({ granted: true, canAskAgain: true } as Notifications.NotificationPermissionsStatus);
+    useAlertSettings.setState({ enabled: false, hydrated: true });
+    await presentAlerts([alert]);
+    expect(schedule).not.toHaveBeenCalled();
   });
 
   it('does nothing without permission', async () => {

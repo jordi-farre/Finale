@@ -26,4 +26,6 @@ afterEach(async () => {
   if (jest.isMockFunction(readTmdbToken)) readTmdbToken.mockReturnValue('test-token');
   const { useWatchlist } = require('@/store/useWatchlist');
   useWatchlist.setState({ shows: [], hydrated: false, refreshing: false });
+  require('@/store/useAlertSettings').useAlertSettings.setState({ enabled: true, hydrated: false });
+  require('@/store/useThemePreference').useThemePreference.setState({ preference: 'system', hydrated: false });
 });

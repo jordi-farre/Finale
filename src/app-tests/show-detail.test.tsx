@@ -2,12 +2,13 @@ import * as Notifications from 'expo-notifications';
 
 import ShowScreen from '@/app/show/[id]';
 import { fetchSnapshot } from '@/lib/tmdb';
+import { useAlertSettings } from '@/store/useAlertSettings';
 import { useWatchlist } from '@/store/useWatchlist';
 import { followed, season, snapshot } from '@/test-utils/fixtures';
 import { fireEvent, render, screen, waitFor } from '@/test-utils/render';
 
 jest.mock('expo-router', () => ({
-  router: { back: jest.fn() },
+  router: { back: jest.fn(), push: jest.fn() },
   useLocalSearchParams: () => ({ id: '1' }),
 }));
 jest.mock('@/lib/tmdb', () => ({ ...jest.requireActual('@/lib/tmdb'), fetchSnapshot: jest.fn() }));
@@ -119,6 +120,23 @@ describe('show detail', () => {
     fetchSnapshotMock.mockResolvedValue(snapshot());
     await render(<ShowScreen />);
     await waitFor(() => expect(screen.getByText(/Notifications are off for Finale/)).toBeOnTheScreen());
+  });
+
+  it('says notifications are off instead of promising them', async () => {
+    useAlertSettings.setState({ enabled: false, hydrated: true });
+    useWatchlist.setState({ hydrated: true, shows: [followed()] });
+    fetchSnapshotMock.mockResolvedValue(snapshot());
+    await render(<ShowScreen />);
+    expect(await screen.findByText('Season notifications are turned off.')).toBeOnTheScreen();
+    expect(screen.queryByText(/You'll get a notification/)).toBeNull();
+  });
+
+  it('does not ask for notification permission when notifications are off', async () => {
+    useAlertSettings.setState({ enabled: false, hydrated: true });
+    fetchSnapshotMock.mockResolvedValue(snapshot());
+    await render(<ShowScreen />);
+    await fireEvent.press(await screen.findByText('Follow'));
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 
   it('shows the stored snapshot and refreshes it for a followed show', async () => {

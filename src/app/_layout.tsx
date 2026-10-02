@@ -13,6 +13,8 @@ import { useTappedShowId } from '@/hooks/use-tapped-show-id';
 import { registerBackgroundRefresh } from '@/lib/backgroundRefresh';
 import { configureNotifications } from '@/lib/notifications';
 import { hasTmdbToken } from '@/lib/tmdb';
+import { useAlertSettings } from '@/store/useAlertSettings';
+import { useThemePreference } from '@/store/useThemePreference';
 import { useWatchlist } from '@/store/useWatchlist';
 import { paperDarkTheme, paperLightTheme } from '@/theme/paper';
 import { colors } from '@/theme/tokens';
@@ -47,13 +49,19 @@ const navigationDarkTheme = {
 };
 
 export default function RootLayout() {
-  const isDark = useColorScheme() === 'dark';
-  const hydrate = useWatchlist((state) => state.hydrate);
-  const hydrated = useWatchlist((state) => state.hydrated);
+  const systemScheme = useColorScheme();
+  const themePreference = useThemePreference((state) => state.preference);
+  const isDark = themePreference === 'system' ? systemScheme === 'dark' : themePreference === 'dark';
+  const watchlistHydrated = useWatchlist((state) => state.hydrated);
+  const themeHydrated = useThemePreference((state) => state.hydrated);
+  const alertsHydrated = useAlertSettings((state) => state.hydrated);
+  const hydrated = watchlistHydrated && themeHydrated && alertsHydrated;
 
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    void useWatchlist.getState().hydrate();
+    void useThemePreference.getState().hydrate();
+    void useAlertSettings.getState().hydrate();
+  }, []);
 
   const tappedShowId = useTappedShowId();
 
@@ -85,6 +93,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="search" />
+            <Stack.Screen name="settings" />
             <Stack.Screen name="show/[id]" />
           </Stack>
         </ThemeProvider>
