@@ -67,7 +67,9 @@ Revisit this if TMDB requests move behind a proxy of our own.
   [`feature-graphic.svg`](feature-graphic.svg); edit the SVG and re-render with `sharp` (see the
   README's Assets section). Uses a made-up show title on purpose: real show names and posters in
   store graphics risk Play's intellectual property policy.
-- [`screenshots/`](screenshots/): **to do**. Capture from a real phone via Expo Go with a TMDB
-  token set, as Punch did (at least 2, ideally watchlist, search with a Cancelled result, show
-  detail, empty state). Real show posters in screenshots are common in tracker apps, but prefer
-  shows with plain title cards over key art if you want to stay cautious.
+- [`screenshots/`](screenshots/): real phone screenshots (~950×2000, PNG, no alpha):
+  - [`01-watchlist.png`](screenshots/01-watchlist.png): the watchlist, grouped by status
+  - [`02-search.png`](screenshots/02-search.png): search with Ended, Cancelled and Ongoing results
+  - [`03-detail.png`](screenshots/03-detail.png): a followed show's detail with seasons
+  - [`04-finished.png`](screenshots/04-finished.png): the finished shows list
+  - [`05-settings.png`](screenshots/05-settings.png): settings with theme, notifications and backup
