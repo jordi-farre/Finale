@@ -30,12 +30,16 @@ describe('search', () => {
       { id: 2, name: 'Firefly Lane', first_air_date: '2021-02-03', poster_path: null, overview: '' },
     ]);
     getShowMock.mockImplementation((id) =>
-      Promise.resolve(showDetails({ id, status: id === 1 ? 'Canceled' : 'Ended' })),
+      Promise.resolve(
+        showDetails({ id, status: id === 1 ? 'Canceled' : 'Ended', vote_average: id === 1 ? 8.86 : 7, vote_count: id === 1 ? 4000 : 10 }),
+      ),
     );
     await render(<SearchScreen />);
     await typeQuery('firefly');
     expect(await screen.findByText('Cancelled')).toBeOnTheScreen();
     expect(screen.getByText('Ended')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Rated 8.9')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Rated 7.0')).toBeNull();
   });
 
   it('says when nothing matches', async () => {

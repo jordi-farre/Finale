@@ -14,6 +14,9 @@
   every season with its state: complete (episodes and binge time), airing ("3 of 8 out · finale
   Nov 4"), or upcoming. Tick the complete seasons you've seen; ticking one on a show you don't
   follow yet follows it, with an Undo.
+- **Follow or add to watchlist**: running shows get *Follow* (with season notifications); shows that
+  are over get *Add to watchlist* instead, since there's nothing to wait for. Cancelled ones still
+  notify you if they're ever revived with a new season.
 - **Watchlist**, grouped by what you can watch next: *Ready to binge* (any complete season you
   haven't seen, even while a newer one airs), *Season airing*, and *Waiting for new episodes*.
 - **Finished**: shows that are over (ended or cancelled) and fully seen move off the watchlist to
@@ -24,6 +27,8 @@
   notification when the whole season is out"), when it's complete, or when the show is cancelled.
   A season that drops all at once gets a single notification. Tapping one opens the show. The
   show page says exactly what you'll be notified about, and warns if notifications are blocked.
+- **Show score** (TMDB's 0–10 user score) in search results ("★ 8.9") and on the show page with its
+  vote count ("★ 8.4 · 21k votes"), hidden for shows with fewer than 50 votes.
 - **Season ratings** on the show page (TMDB's 0–10 user score, e.g. "★ 8.1"). Hidden when they'd
   mislead: unaired seasons, seasons TMDB reports as 0 (no ratings yet), and every season of a show
   with fewer than 50 votes overall, since TMDB doesn't say how many people rated each season.
@@ -132,8 +137,8 @@ store/play/       Play Store listing copy, feature graphic, 512px icon, privacy 
 src/
   app/            expo-router screens: watchlist, finished, search, show detail, settings
   app-tests/      tests for the screens above
-  components/     ShowRow, SeasonRow, Poster, StatusChip, EmptyState, MissingTokenBanner,
-                  BackupSection
+  components/     ShowRow, SeasonRow, Poster, StatusChip, RatingLabel, EmptyState,
+                  MissingTokenBanner, BackupSection
   lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,
                   background refresh, AsyncStorage I/O, backup files, types
   store/          zustand stores: watchlist, theme preference, notification setting

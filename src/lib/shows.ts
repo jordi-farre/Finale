@@ -1,7 +1,7 @@
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 
 import type { TmdbSeasonDetails, TmdbShowDetails } from '@/lib/tmdb';
-import type { FollowedShow, SeasonInfo, SeasonState, ShowSnapshot, ShowStatus } from '@/lib/types';
+import type { FollowedShow, SeasonInfo, SeasonState, ShowRating, ShowSnapshot, ShowStatus } from '@/lib/types';
 
 export function toIsoDate(date: Date): string {
   return format(date, 'yyyy-MM-dd');
@@ -149,6 +149,7 @@ export function buildSnapshot(
     firstAirYear: details.first_air_date ? details.first_air_date.slice(0, 4) : null,
     overview: details.overview,
     status: mapStatus(details.status),
+    rating: showRating(details),
     seasonCount: details.seasons.filter((s) => s.season_number > 0 && s.episode_count > 0).length,
     latestSeason,
     seasons: seasonList(details, latestSeason, episodeLength(details, season), now),
@@ -157,6 +158,18 @@ export function buildSnapshot(
 }
 
 export const MIN_SHOW_VOTES_FOR_SEASON_RATINGS = 50;
+
+export function showRating(details: Pick<TmdbShowDetails, 'vote_average' | 'vote_count'>): ShowRating | null {
+  const votes = details.vote_count ?? 0;
+  if (!details.vote_average || votes < MIN_SHOW_VOTES_FOR_SEASON_RATINGS) return null;
+  return { score: Math.round(details.vote_average * 10) / 10, votes };
+}
+
+export function formatVotes(votes: number): string {
+  if (votes < 1000) return String(votes);
+  const thousands = votes / 1000;
+  return `${thousands < 10 ? Math.round(thousands * 10) / 10 : Math.round(thousands)}k`;
+}
 
 function seasonRating(voteAverage: number | undefined, showVotes: number, state: SeasonInfo['state']): number | null {
   if (state === 'upcoming' || !voteAverage || showVotes < MIN_SHOW_VOTES_FOR_SEASON_RATINGS) return null;
@@ -291,12 +304,21 @@ export function watchlistDetail(show: Pick<FollowedShow, 'snapshot' | 'seenSeaso
   return 'All caught up · waiting for a new season';
 }
 
+export function isWatchlistOnly(snapshot: Pick<ShowSnapshot, 'status' | 'latestSeason'>): boolean {
+  const latest = snapshot.latestSeason;
+  return isOver(snapshot.status) && latest.kind !== 'airing' && latest.kind !== 'upcoming';
+}
+
+export function canNotify(snapshot: Pick<ShowSnapshot, 'status' | 'latestSeason'>): boolean {
+  return !(isWatchlistOnly(snapshot) && snapshot.status === 'ended');
+}
+
 export function followHint(snapshot: Pick<ShowSnapshot, 'status' | 'latestSeason'>, following: boolean): string {
   const latest = snapshot.latestSeason;
-  if (isOver(snapshot.status) && latest.kind !== 'airing' && latest.kind !== 'upcoming') {
-    return following
-      ? 'This show is over, so there are no new seasons to notify you about.'
-      : "This show is over. Follow it to keep track of the seasons you've seen.";
+  if (isWatchlistOnly(snapshot)) {
+    const revival = "If it ever comes back, you'll get a notification when the new season starts.";
+    if (snapshot.status === 'cancelled') return following ? revival : `Track the seasons you've seen. ${revival}`;
+    return following ? 'This show is over, so there are no new seasons to notify you about.' : "Track the seasons you've seen.";
   }
   const lead = following ? "You'll get a notification" : 'Follow to get a notification';
   if (latest.kind === 'airing') return `${lead} when Season ${latest.seasonNumber} is complete.`;

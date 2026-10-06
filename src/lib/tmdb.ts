@@ -37,6 +37,7 @@ export type TmdbShowDetails = {
   number_of_seasons: number;
   episode_run_time: number[];
   vote_count?: number;
+  vote_average?: number;
   seasons: TmdbSeasonSummary[];
   last_episode_to_air: TmdbEpisodeRef | null;
   next_episode_to_air: TmdbEpisodeRef | null;

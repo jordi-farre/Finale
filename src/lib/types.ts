@@ -27,6 +27,11 @@ export type SeasonInfo = {
   rating?: number | null;
 };
 
+export type ShowRating = {
+  score: number;
+  votes: number;
+};
+
 export type ShowSnapshot = {
   id: number;
   name: string;
@@ -35,6 +40,7 @@ export type ShowSnapshot = {
   overview: string;
   status: ShowStatus;
   seasonCount: number;
+  rating?: ShowRating | null;
   latestSeason: SeasonState;
   seasons: SeasonInfo[];
   fetchedAt: string;

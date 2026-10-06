@@ -4,13 +4,17 @@ import {
   episodeLength,
   endingNote,
   formatRuntime,
+  formatVotes,
   mapStatus,
   MIN_SHOW_VOTES_FOR_SEASON_RATINGS,
+  canNotify,
   followHint,
+  isWatchlistOnly,
   seasonList,
   seasonState,
   seasonStateLabel,
   seasonSummary,
+  showRating,
   statusLabel,
   watchlistDetail,
   watchlistGroup,
@@ -394,8 +398,37 @@ describe('followHint', () => {
     expect(followHint(snapshot(), true)).toBe("You'll get a notification when a new season starts, and another when it's complete.");
   });
 
-  it('is honest that a finished show has nothing to wait for', () => {
-    expect(followHint(snapshot({ status: 'ended' }), false)).toBe("This show is over. Follow it to keep track of the seasons you've seen.");
+  it('offers seen-season tracking for an ended show', () => {
+    expect(followHint(snapshot({ status: 'ended' }), false)).toBe("Track the seasons you've seen.");
+    expect(followHint(snapshot({ status: 'ended' }), true)).toBe('This show is over, so there are no new seasons to notify you about.');
+  });
+
+  it('mentions a possible revival for a cancelled show', () => {
+    expect(followHint(snapshot({ status: 'cancelled' }), false)).toBe(
+      "Track the seasons you've seen. If it ever comes back, you'll get a notification when the new season starts.",
+    );
+    expect(followHint(snapshot({ status: 'cancelled' }), true)).toBe(
+      "If it ever comes back, you'll get a notification when the new season starts.",
+    );
+  });
+});
+
+describe('watchlist-only shows', () => {
+  it('treats finished shows as watchlist-only', () => {
+    expect(isWatchlistOnly(snapshot({ status: 'ended' }))).toBe(true);
+    expect(isWatchlistOnly(snapshot({ status: 'cancelled' }))).toBe(true);
+    expect(isWatchlistOnly(snapshot({ status: 'returning' }))).toBe(false);
+  });
+
+  it('treats a cancelled show that is still airing its last season as followable', () => {
+    const airing = { kind: 'airing' as const, seasonNumber: 2, airedCount: 1, episodeCount: 8, finaleDate: null };
+    expect(isWatchlistOnly(snapshot({ status: 'cancelled', latestSeason: airing }))).toBe(false);
+  });
+
+  it('only lets ended shows go without notifications', () => {
+    expect(canNotify(snapshot({ status: 'ended' }))).toBe(false);
+    expect(canNotify(snapshot({ status: 'cancelled' }))).toBe(true);
+    expect(canNotify(snapshot())).toBe(true);
   });
 });
 
@@ -412,5 +445,36 @@ describe('seasonStateLabel', () => {
 describe('statusLabel', () => {
   it('calls returning series ongoing', () => {
     expect(statusLabel('returning')).toBe('Ongoing');
+  });
+});
+
+describe('showRating', () => {
+  it('rounds the score and keeps the vote count', () => {
+    expect(showRating({ vote_average: 8.438, vote_count: 21390 })).toEqual({ score: 8.4, votes: 21390 });
+  });
+
+  it('hides a score backed by too few votes', () => {
+    expect(showRating({ vote_average: 9.6, vote_count: 12 })).toBeNull();
+  });
+
+  it('hides a missing or zero score', () => {
+    expect(showRating({ vote_average: 0, vote_count: 500 })).toBeNull();
+    expect(showRating({})).toBeNull();
+  });
+
+  it('is part of the snapshot', () => {
+    const snap = buildSnapshot(showDetails({ vote_average: 8.04, vote_count: 900 }), null, NOW);
+    expect(snap.rating).toEqual({ score: 8, votes: 900 });
+  });
+});
+
+describe('formatVotes', () => {
+  it.each([
+    [850, '850'],
+    [1234, '1.2k'],
+    [9960, '10k'],
+    [21390, '21k'],
+  ])('formats %i as %s', (votes, text) => {
+    expect(formatVotes(votes)).toBe(text);
   });
 });

@@ -5,10 +5,11 @@ import { ActivityIndicator, Appbar, Button, Card, Icon, Snackbar, Text, useTheme
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Poster } from '@/components/Poster';
+import { RatingLabel } from '@/components/RatingLabel';
 import { SeasonRow } from '@/components/SeasonRow';
 import { StatusChip } from '@/components/StatusChip';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
-import { endingNote, followHint } from '@/lib/shows';
+import { canNotify, endingNote, followHint, isWatchlistOnly } from '@/lib/shows';
 import { fetchSnapshot } from '@/lib/tmdb';
 import type { ShowSnapshot } from '@/lib/types';
 import { useAlertSettings } from '@/store/useAlertSettings';
@@ -54,7 +55,7 @@ export default function ShowScreen() {
 
   function startFollowing(current: ShowSnapshot) {
     follow(current);
-    if (alertsEnabled) void notifications.request();
+    if (alertsEnabled && canNotify(current)) void notifications.request();
   }
 
   function toggleSeen(current: ShowSnapshot, seasonNumber: number) {
@@ -64,7 +65,12 @@ export default function ShowScreen() {
     const marked = added > 1 ? `${added} seasons marked as seen` : null;
     if (!following) {
       setNotice({
-        message: marked ? `Now following ${current.name} · ${marked}` : `Now following ${current.name}`,
+        message: [
+          isWatchlistOnly(current) ? `Added ${current.name} to your watchlist` : `Now following ${current.name}`,
+          marked,
+        ]
+          .filter(Boolean)
+          .join(' · '),
         undo: () => unfollow(current.id),
       });
     } else if (marked) {
@@ -91,8 +97,11 @@ export default function ShowScreen() {
 
   const ending = endingNote(snapshot);
   const cancelled = snapshot.status === 'cancelled';
-  const showBlockedWarning = following && alertsEnabled && notifications.status === 'blocked';
-  const showDisabledNote = following && !alertsEnabled;
+
+  const watchlistOnly = isWatchlistOnly(snapshot);
+  const notifies = canNotify(snapshot);
+  const showDisabledNote = following && !alertsEnabled && notifies;
+  const showBlockedWarning = following && alertsEnabled && notifies && notifications.status === 'blocked';
 
   return (
     <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
@@ -112,6 +121,7 @@ export default function ShowScreen() {
               </Text>
             ) : null}
             <StatusChip status={snapshot.status} />
+            {snapshot.rating ? <RatingLabel rating={snapshot.rating} withVotes /> : null}
           </View>
         </View>
 
@@ -138,11 +148,19 @@ export default function ShowScreen() {
         <View className="gap-sm">
           <Button
             mode={following ? 'outlined' : 'contained'}
-            icon={following ? 'bell-check-outline' : 'bell-plus-outline'}
+            icon={
+              watchlistOnly
+                ? following
+                  ? 'playlist-check'
+                  : 'playlist-plus'
+                : following
+                  ? 'bell-check-outline'
+                  : 'bell-plus-outline'
+            }
             onPress={() => (following ? unfollow(snapshot.id) : startFollowing(snapshot))}>
-            {following ? 'Following' : 'Follow'}
+            {watchlistOnly ? (following ? 'In watchlist' : 'Add to watchlist') : following ? 'Following' : 'Follow'}
           </Button>
-          {alertsEnabled ? (
+          {alertsEnabled || !notifies ? (
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
               {followHint(snapshot, following)}
             </Text>

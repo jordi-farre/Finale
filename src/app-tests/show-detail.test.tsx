@@ -52,6 +52,29 @@ describe('show detail', () => {
     expect(useWatchlist.getState().shows).toEqual([]);
   });
 
+  it('offers a watchlist instead of following for a finished show', async () => {
+    fetchSnapshotMock.mockResolvedValue(snapshot({ status: 'ended' }));
+    await render(<ShowScreen />);
+    await fireEvent.press(await screen.findByText('Add to watchlist'));
+    expect(useWatchlist.getState().shows.map((show) => show.id)).toEqual([1]);
+    expect(screen.getByText('In watchlist')).toBeOnTheScreen();
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('still asks for notifications when adding a cancelled show, in case it comes back', async () => {
+    fetchSnapshotMock.mockResolvedValue(snapshot({ status: 'cancelled' }));
+    await render(<ShowScreen />);
+    await fireEvent.press(await screen.findByText('Add to watchlist'));
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
+  });
+
+  it('confirms adding a finished show when you mark a season seen', async () => {
+    fetchSnapshotMock.mockResolvedValue(snapshot({ status: 'ended' }));
+    await render(<ShowScreen />);
+    await fireEvent.press(await screen.findByLabelText('Season 1, not seen'));
+    expect(screen.getByText('Added Severance to your watchlist')).toBeOnTheScreen();
+  });
+
   it('lists every season with its state', async () => {
     fetchSnapshotMock.mockResolvedValue(
       snapshot({
@@ -65,6 +88,19 @@ describe('show detail', () => {
     expect(screen.getByText('10 episodes · 7h 30m')).toBeOnTheScreen();
     expect(screen.getByText('Airing · 3 of 8 out')).toBeOnTheScreen();
     expect(screen.getByText('Announced')).toBeOnTheScreen();
+  });
+
+  it('shows the show score with its vote count', async () => {
+    fetchSnapshotMock.mockResolvedValue(snapshot({ rating: { score: 8.4, votes: 21390 } }));
+    await render(<ShowScreen />);
+    expect(await screen.findByText('8.4 · 21k votes')).toBeOnTheScreen();
+  });
+
+  it('leaves the show score out when there is none', async () => {
+    fetchSnapshotMock.mockResolvedValue(snapshot({ rating: null }));
+    await render(<ShowScreen />);
+    await screen.findByText('Ongoing');
+    expect(screen.queryByText(/votes$/)).toBeNull();
   });
 
   it('shows a season rating only when there is one', async () => {

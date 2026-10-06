@@ -7,12 +7,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/EmptyState';
 import { MissingTokenBanner } from '@/components/MissingTokenBanner';
 import { ShowRow } from '@/components/ShowRow';
-import { mapStatus } from '@/lib/shows';
+import { mapStatus, showRating } from '@/lib/shows';
 import { getShow, searchShows, type TmdbSearchResult } from '@/lib/tmdb';
-import type { ShowStatus } from '@/lib/types';
+import type { ShowRating, ShowStatus } from '@/lib/types';
 
 const DEBOUNCE_MS = 400;
 const STATUS_LOOKUPS = 10;
+
+type ResultInfo = {
+  status: ShowStatus;
+  rating: ShowRating | null;
+};
 
 type SearchResponse = {
   query: string;
@@ -25,7 +30,7 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<SearchResponse>({ query: '', results: [], error: false });
-  const [statuses, setStatuses] = useState<Record<number, ShowStatus>>({});
+  const [infos, setInfos] = useState<Record<number, ResultInfo>>({});
   const trimmed = query.trim();
 
   useEffect(() => {
@@ -38,11 +43,12 @@ export default function SearchScreen() {
         setResponse({ query: trimmed, results: found, error: false });
         const lookups = await Promise.allSettled(found.slice(0, STATUS_LOOKUPS).map((show) => getShow(show.id)));
         if (!active) return;
-        const next: Record<number, ShowStatus> = {};
+        const next: Record<number, ResultInfo> = {};
         for (const lookup of lookups) {
-          if (lookup.status === 'fulfilled') next[lookup.value.id] = mapStatus(lookup.value.status);
+          if (lookup.status !== 'fulfilled') continue;
+          next[lookup.value.id] = { status: mapStatus(lookup.value.status), rating: showRating(lookup.value) };
         }
-        setStatuses((previous) => ({ ...previous, ...next }));
+        setInfos((previous) => ({ ...previous, ...next }));
       } catch {
         if (active) setResponse({ query: trimmed, results: [], error: true });
       }
@@ -95,7 +101,8 @@ export default function SearchScreen() {
               name={item.name}
               year={item.first_air_date ? item.first_air_date.slice(0, 4) : null}
               posterPath={item.poster_path}
-              status={statuses[item.id]}
+              status={infos[item.id]?.status}
+              rating={infos[item.id]?.rating}
               onPress={() => router.push(`/show/${item.id}`)}
             />
           )}

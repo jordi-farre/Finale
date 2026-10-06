@@ -2,19 +2,21 @@ import { View } from 'react-native';
 import { Text, TouchableRipple, useTheme } from 'react-native-paper';
 
 import { Poster } from '@/components/Poster';
+import { RatingLabel } from '@/components/RatingLabel';
 import { StatusChip } from '@/components/StatusChip';
-import type { ShowStatus } from '@/lib/types';
+import type { ShowRating, ShowStatus } from '@/lib/types';
 
 type Props = {
   name: string;
   year: string | null;
   posterPath: string | null;
   status?: ShowStatus;
+  rating?: ShowRating | null;
   detail?: string | null;
   onPress: () => void;
 };
 
-export function ShowRow({ name, year, posterPath, status, detail, onPress }: Props) {
+export function ShowRow({ name, year, posterPath, status, rating, detail, onPress }: Props) {
   const theme = useTheme();
   return (
     <TouchableRipple onPress={onPress} accessibilityRole="button" accessibilityLabel={name}>
@@ -29,7 +31,12 @@ export function ShowRow({ name, year, posterPath, status, detail, onPress }: Pro
               </Text>
             ) : null}
           </Text>
-          {status ? <StatusChip status={status} /> : null}
+          {status || rating ? (
+            <View className="flex-row items-center gap-sm">
+              {status ? <StatusChip status={status} /> : null}
+              {rating ? <RatingLabel rating={rating} /> : null}
+            </View>
+          ) : null}
           {detail ? (
             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
               {detail}
