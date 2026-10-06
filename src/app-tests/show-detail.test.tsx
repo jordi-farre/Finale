@@ -67,6 +67,16 @@ describe('show detail', () => {
     expect(screen.getByText('Announced')).toBeOnTheScreen();
   });
 
+  it('shows a season rating only when there is one', async () => {
+    fetchSnapshotMock.mockResolvedValue(
+      snapshot({ seasons: [season(1, { rating: 8.1 }), season(2, { rating: null })] }),
+    );
+    await render(<ShowScreen />);
+    expect(await screen.findByLabelText('Season 1, rated 8.1, not seen')).toBeOnTheScreen();
+    expect(screen.getByText('8.1')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Season 2, not seen')).toBeOnTheScreen();
+  });
+
   it('marks a season as seen on a followed show', async () => {
     useWatchlist.setState({ hydrated: true, shows: [followed()] });
     fetchSnapshotMock.mockResolvedValue(snapshot());

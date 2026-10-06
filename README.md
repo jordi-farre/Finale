@@ -24,6 +24,9 @@
   notification when the whole season is out"), when it's complete, or when the show is cancelled.
   A season that drops all at once gets a single notification. Tapping one opens the show. The
   show page says exactly what you'll be notified about, and warns if notifications are blocked.
+- **Season ratings** on the show page (TMDB's 0–10 user score, e.g. "★ 8.1"). Hidden when they'd
+  mislead: unaired seasons, seasons TMDB reports as 0 (no ratings yet), and every season of a show
+  with fewer than 50 votes overall, since TMDB doesn't say how many people rated each season.
 - **Binge time on the show page**: each season lists its runtime. TMDB's typical episode length is
   often empty, so seasons other than the current one are estimated from the current season's
   average episode runtime. The watchlist sticks to episode counts.

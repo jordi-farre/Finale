@@ -22,6 +22,7 @@ export function SeasonRow({ season, latest, seen, onToggleSeen }: Props) {
         : theme.colors.onSurfaceVariant;
   const detail = seasonDetailLine(season);
   const label = `Season ${season.seasonNumber}`;
+  const rating = season.rating ? season.rating.toFixed(1) : null;
 
   return (
     <TouchableRipple
@@ -29,10 +30,20 @@ export function SeasonRow({ season, latest, seen, onToggleSeen }: Props) {
       disabled={!canMark}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: seen, disabled: !canMark }}
-      accessibilityLabel={`${label}, ${seen ? 'seen' : 'not seen'}`}>
+      accessibilityLabel={`${label}, ${rating ? `rated ${rating}, ` : ''}${seen ? 'seen' : 'not seen'}`}>
       <View className="flex-row items-center gap-sm py-md">
         <View className="flex-1 gap-xs">
-          <Text variant="titleLarge">{label}</Text>
+          <View className="flex-row items-center gap-sm">
+            <Text variant="titleLarge">{label}</Text>
+            {rating ? (
+              <View className="flex-row items-center gap-xs">
+                <Icon source="star" size={18} color={theme.colors.primary} />
+                <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {rating}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Text variant="bodyMedium" style={{ color: stateColor }}>
             {seasonStateLabel(season, latest)}
           </Text>

@@ -24,6 +24,7 @@ export type TmdbSeasonSummary = {
   episode_count: number;
   air_date: string | null;
   name: string;
+  vote_average?: number;
 };
 
 export type TmdbShowDetails = {
@@ -35,6 +36,7 @@ export type TmdbShowDetails = {
   overview: string;
   number_of_seasons: number;
   episode_run_time: number[];
+  vote_count?: number;
   seasons: TmdbSeasonSummary[];
   last_episode_to_air: TmdbEpisodeRef | null;
   next_episode_to_air: TmdbEpisodeRef | null;

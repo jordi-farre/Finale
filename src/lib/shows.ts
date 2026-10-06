@@ -156,31 +156,56 @@ export function buildSnapshot(
   };
 }
 
+export const MIN_SHOW_VOTES_FOR_SEASON_RATINGS = 50;
+
+function seasonRating(voteAverage: number | undefined, showVotes: number, state: SeasonInfo['state']): number | null {
+  if (state === 'upcoming' || !voteAverage || showVotes < MIN_SHOW_VOTES_FOR_SEASON_RATINGS) return null;
+  return Math.round(voteAverage * 10) / 10;
+}
+
+type SeasonProgress = Pick<SeasonInfo, 'state' | 'runtimeMinutes' | 'episodeCount'>;
+
+function seasonProgress(
+  season: TmdbShowDetails['seasons'][number],
+  latest: SeasonState,
+  estimate: number | null,
+  today: string,
+): SeasonProgress {
+  const currentNumber = latest.kind === 'none' ? null : latest.seasonNumber;
+  if (latest.kind !== 'none' && season.season_number === currentNumber) {
+    if (latest.kind === 'complete') {
+      return { state: 'complete', episodeCount: latest.episodeCount, runtimeMinutes: latest.runtimeMinutes ?? estimate };
+    }
+    return { state: latest.kind, episodeCount: season.episode_count, runtimeMinutes: estimate };
+  }
+  const beforeCurrent = currentNumber === null || season.season_number < currentNumber;
+  const aired = season.episode_count > 0 && (season.air_date === null || season.air_date <= today);
+  return {
+    state: beforeCurrent && aired ? 'complete' : 'upcoming',
+    episodeCount: season.episode_count,
+    runtimeMinutes: estimate,
+  };
+}
+
 export function seasonList(
-  details: Pick<TmdbShowDetails, 'seasons'>,
+  details: Pick<TmdbShowDetails, 'seasons' | 'vote_count'>,
   latest: SeasonState,
   perEpisode: number | null,
   now: Date = new Date(),
 ): SeasonInfo[] {
   const today = toIsoDate(now);
-  const currentNumber = latest.kind === 'none' ? null : latest.seasonNumber;
   return details.seasons
     .filter((season) => season.season_number > 0)
     .sort((a, b) => a.season_number - b.season_number)
     .map((season): SeasonInfo => {
       const estimate = perEpisode && season.episode_count > 0 ? perEpisode * season.episode_count : null;
-      const base = { seasonNumber: season.season_number, episodeCount: season.episode_count, airDate: season.air_date };
-      if (latest.kind !== 'none' && season.season_number === currentNumber) {
-        if (latest.kind === 'complete') {
-          return { ...base, episodeCount: latest.episodeCount, state: 'complete', runtimeMinutes: latest.runtimeMinutes ?? estimate };
-        }
-        return { ...base, state: latest.kind, runtimeMinutes: estimate };
-      }
-      const beforeCurrent = currentNumber === null || season.season_number < currentNumber;
-      const aired = season.episode_count > 0 && (season.air_date === null || season.air_date <= today);
-      return beforeCurrent && aired
-        ? { ...base, state: 'complete', runtimeMinutes: estimate }
-        : { ...base, state: 'upcoming', runtimeMinutes: estimate };
+      const progress = seasonProgress(season, latest, estimate, today);
+      return {
+        seasonNumber: season.season_number,
+        airDate: season.air_date,
+        ...progress,
+        rating: seasonRating(season.vote_average, details.vote_count ?? 0, progress.state),
+      };
     });
 }
 

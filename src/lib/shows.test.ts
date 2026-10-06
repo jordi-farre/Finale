@@ -5,6 +5,7 @@ import {
   endingNote,
   formatRuntime,
   mapStatus,
+  MIN_SHOW_VOTES_FOR_SEASON_RATINGS,
   followHint,
   seasonList,
   seasonState,
@@ -227,10 +228,10 @@ describe('seasonList', () => {
   it('marks earlier seasons complete, the current one from its state, and later ones upcoming', () => {
     const latest = { kind: 'airing' as const, seasonNumber: 3, airedCount: 2, episodeCount: 6, finaleDate: '2026-10-21' };
     expect(seasonList(details, latest, 30, NOW)).toEqual([
-      { seasonNumber: 1, episodeCount: 10, airDate: '2019-03-01', state: 'complete', runtimeMinutes: 300 },
-      { seasonNumber: 2, episodeCount: 8, airDate: '2021-03-01', state: 'complete', runtimeMinutes: 240 },
-      { seasonNumber: 3, episodeCount: 6, airDate: '2026-09-16', state: 'airing', runtimeMinutes: 180 },
-      { seasonNumber: 4, episodeCount: 0, airDate: null, state: 'upcoming', runtimeMinutes: null },
+      { seasonNumber: 1, episodeCount: 10, airDate: '2019-03-01', state: 'complete', runtimeMinutes: 300, rating: null },
+      { seasonNumber: 2, episodeCount: 8, airDate: '2021-03-01', state: 'complete', runtimeMinutes: 240, rating: null },
+      { seasonNumber: 3, episodeCount: 6, airDate: '2026-09-16', state: 'airing', runtimeMinutes: 180, rating: null },
+      { seasonNumber: 4, episodeCount: 0, airDate: null, state: 'upcoming', runtimeMinutes: null, rating: null },
     ]);
   });
 
@@ -269,6 +270,38 @@ describe('seasonList', () => {
       ],
     };
     expect(seasonList(odd, latest, null, NOW).map((s) => s.state)).toEqual(['upcoming', 'upcoming', 'airing']);
+  });
+
+  describe('season ratings', () => {
+    const latest = { kind: 'airing' as const, seasonNumber: 3, airedCount: 2, episodeCount: 6, finaleDate: null };
+    const rated = {
+      vote_count: 2400,
+      seasons: [
+        { season_number: 1, episode_count: 10, air_date: '2019-03-01', name: 'Season 1', vote_average: 8.14 },
+        { season_number: 2, episode_count: 8, air_date: '2021-03-01', name: 'Season 2', vote_average: 0 },
+        { season_number: 3, episode_count: 6, air_date: '2026-09-16', name: 'Season 3', vote_average: 7.5 },
+        { season_number: 4, episode_count: 0, air_date: null, name: 'Season 4', vote_average: 9 },
+      ],
+    };
+
+    it('shows a rounded rating for aired seasons', () => {
+      const [first, , third] = seasonList(rated, latest, null, NOW);
+      expect(first.rating).toBe(8.1);
+      expect(third.rating).toBe(7.5);
+    });
+
+    it('hides a rating of zero, which means nobody rated it yet', () => {
+      expect(seasonList(rated, latest, null, NOW)[1].rating).toBeNull();
+    });
+
+    it('hides the rating of a season that has not aired', () => {
+      expect(seasonList(rated, latest, null, NOW)[3].rating).toBeNull();
+    });
+
+    it('hides every season rating when too few people rated the show', () => {
+      const obscure = { ...rated, vote_count: MIN_SHOW_VOTES_FOR_SEASON_RATINGS - 1 };
+      expect(seasonList(obscure, latest, null, NOW).map((season) => season.rating)).toEqual([null, null, null, null]);
+    });
   });
 
   it('leaves runtime unknown without an episode length', () => {

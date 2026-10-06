@@ -24,6 +24,7 @@ export type SeasonInfo = {
   airDate: string | null;
   state: 'complete' | 'airing' | 'upcoming';
   runtimeMinutes: number | null;
+  rating?: number | null;
 };
 
 export type ShowSnapshot = {
