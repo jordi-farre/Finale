@@ -34,7 +34,7 @@ export default function FinishedScreen() {
           keyExtractor={(show) => String(show.id)}
           contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
           ListHeaderComponent={
-            <Text variant="bodyMedium" className="px-md pb-sm" style={{ color: theme.colors.onSurfaceVariant }}>
+            <Text variant="bodySmall" className="px-md pb-sm" style={{ color: theme.colors.onSurfaceVariant }}>
               Shows that are over and fully seen. If one comes back, or you untick a season, it returns to your
               watchlist.
             </Text>

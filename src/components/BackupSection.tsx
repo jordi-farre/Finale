@@ -37,8 +37,8 @@ export function BackupSection() {
 
   return (
     <View className="gap-sm">
-      <Text variant="titleMedium">Backup</Text>
-      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+      <Text variant="labelLarge">Backup</Text>
+      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
         Save the shows you follow and the seasons you&apos;ve seen to a file, or restore them from one.
       </Text>
       <View className="flex-row gap-sm">

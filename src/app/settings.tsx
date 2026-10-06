@@ -35,9 +35,9 @@ export default function SettingsScreen() {
         <Appbar.Content title="Settings" />
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 32 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 24 }}>
         <View className="gap-sm">
-          <Text variant="titleMedium">Theme</Text>
+          <Text variant="labelLarge">Theme</Text>
           <SegmentedButtons
             value={preference}
             onValueChange={(value) => setPreference(value as ThemePreference)}
@@ -52,8 +52,8 @@ export default function SettingsScreen() {
         <View className="gap-sm">
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-md">
-              <Text variant="titleMedium">Season notifications</Text>
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              <Text variant="labelLarge">Season notifications</Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
                 When a season of a show you follow starts, when it&apos;s complete, and if a show is cancelled.
               </Text>
             </View>
@@ -64,7 +64,7 @@ export default function SettingsScreen() {
             <View
               className="flex-row items-center justify-between rounded-md p-sm"
               style={{ backgroundColor: theme.colors.errorContainer }}>
-              <Text variant="bodyMedium" className="flex-1" style={{ color: theme.colors.onErrorContainer }}>
+              <Text variant="bodySmall" className="flex-1" style={{ color: theme.colors.onErrorContainer }}>
                 Blocked in system settings
               </Text>
               <Button textColor={theme.colors.onErrorContainer} onPress={() => void Linking.openSettings()}>

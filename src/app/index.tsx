@@ -66,7 +66,7 @@ export default function WatchlistScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshAll()} />}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
-            <Text variant="titleMedium" className="px-md pb-xs pt-lg" style={{ color: theme.colors.primary }}>
+            <Text variant="titleSmall" className="px-md pb-xs pt-md" style={{ color: theme.colors.primary }}>
               {section.title}
             </Text>
           )}
@@ -84,11 +84,11 @@ export default function WatchlistScreen() {
             finishedCount > 0 ? (
               <TouchableRipple onPress={openFinished} accessibilityRole="button" className="mt-md">
                 <View className="flex-row items-center justify-center gap-sm py-md">
-                  <Icon source="flag-checkered" size={20} color={theme.colors.onSurfaceVariant} />
-                  <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
+                  <Icon source="flag-checkered" size={18} color={theme.colors.onSurfaceVariant} />
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
                     {`${finishedCount} finished show${finishedCount === 1 ? '' : 's'}`}
                   </Text>
-                  <Icon source="chevron-right" size={20} color={theme.colors.onSurfaceVariant} />
+                  <Icon source="chevron-right" size={18} color={theme.colors.onSurfaceVariant} />
                 </View>
               </TouchableRipple>
             ) : null

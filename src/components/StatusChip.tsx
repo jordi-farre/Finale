@@ -28,8 +28,8 @@ export function StatusChip({ status }: Props) {
   const theme = useTheme();
   const { background, text } = chipColors(status, theme.colors);
   return (
-    <View className="self-start rounded-full px-md py-xs" style={{ backgroundColor: background }}>
-      <Text variant="labelMedium" style={{ color: text }}>
+    <View className="self-start rounded-full px-sm py-xs" style={{ backgroundColor: background }}>
+      <Text variant="labelSmall" style={{ color: text }}>
         {statusLabel(status)}
       </Text>
     </View>
