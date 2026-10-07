@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 
+import WatchlistScreen from '@/app/index';
 import FinishedScreen from '@/app/finished';
 import { useWatchlist } from '@/store/useWatchlist';
 import { followed } from '@/test-utils/fixtures';
@@ -7,7 +8,7 @@ import { fireEvent, render, screen } from '@/test-utils/render';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 
-describe('finished shows', () => {
+describe('viewing finished shows', () => {
   it('explains what ends up here when empty', async () => {
     useWatchlist.setState({ hydrated: true, shows: [followed()] });
     await render(<FinishedScreen />);
@@ -38,5 +39,31 @@ describe('finished shows', () => {
     await render(<FinishedScreen />);
     await fireEvent.press(screen.getByLabelText('Firefly'));
     expect(router.push).toHaveBeenCalledWith('/show/7');
+  });
+
+  it('opens finished shows from the footer and the top bar', async () => {
+    useWatchlist.setState({
+      hydrated: true,
+      shows: [
+        followed({ id: 1, name: 'Severance' }),
+        followed({ id: 2, name: 'Firefly', status: 'cancelled' }, { seenSeasons: [1, 2] }),
+        followed({ id: 3, name: 'Lost', status: 'ended' }, { seenSeasons: [1, 2] }),
+      ],
+    });
+    await render(<WatchlistScreen />);
+    await fireEvent.press(screen.getByText('2 finished shows'));
+    expect(router.push).toHaveBeenCalledWith('/finished');
+    await fireEvent.press(screen.getByLabelText('Finished shows'));
+    expect(router.push).toHaveBeenLastCalledWith('/finished');
+  });
+
+  it('says you are all caught up when every show is finished', async () => {
+    useWatchlist.setState({
+      hydrated: true,
+      shows: [followed({ name: 'Firefly', status: 'cancelled' }, { seenSeasons: [1, 2] })],
+    });
+    await render(<WatchlistScreen />);
+    expect(screen.getByText('All caught up')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Firefly')).toBeNull();
   });
 });

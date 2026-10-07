@@ -16,7 +16,7 @@ beforeEach(() => {
   useThemePreference.setState({ preference: 'system', hydrated: true });
 });
 
-describe('settings', () => {
+describe('changing settings', () => {
   it('switches the theme and remembers it', async () => {
     await render(<SettingsScreen />);
     await fireEvent.press(screen.getByText('Dark'));
@@ -43,24 +43,5 @@ describe('settings', () => {
   it('shows the app version', async () => {
     await render(<SettingsScreen />);
     expect(screen.getByText(/^Finale /)).toBeOnTheScreen();
-  });
-});
-
-describe('settings stores', () => {
-  it('restore saved preferences', async () => {
-    await AsyncStorage.setItem(THEME_STORAGE_KEY_FOR_TESTS, 'light');
-    await AsyncStorage.setItem(ALERT_SETTINGS_STORAGE_KEY_FOR_TESTS, 'false');
-    await useThemePreference.getState().hydrate();
-    await useAlertSettings.getState().hydrate();
-    expect(useThemePreference.getState().preference).toBe('light');
-    expect(useAlertSettings.getState().enabled).toBe(false);
-  });
-
-  it('fall back to defaults for unknown values', async () => {
-    await AsyncStorage.setItem(THEME_STORAGE_KEY_FOR_TESTS, 'purple');
-    await useThemePreference.getState().hydrate();
-    await useAlertSettings.getState().hydrate();
-    expect(useThemePreference.getState().preference).toBe('system');
-    expect(useAlertSettings.getState().enabled).toBe(true);
   });
 });

@@ -136,7 +136,10 @@ assets/source/    icon generator (the PNGs in assets/images are its output)
 store/play/       Play Store listing copy, feature graphic, 512px icon, privacy policy page
 src/
   app/            expo-router screens: watchlist, finished, search, show detail, settings
-  app-tests/      tests for the screens above
+  app-tests/      acceptance tests, one file per thing a user does (view-watchlist,
+                  search-shows, view-show, follow-show, mark-seasons-seen,
+                  get-season-notifications, view-finished-shows, change-settings,
+                  backup-restore), organized like Punch's
   components/     ShowRow, SeasonRow, Poster, StatusChip, RatingLabel, EmptyState,
                   MissingTokenBanner, BackupSection
   lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,

@@ -18,7 +18,7 @@ async function typeQuery(text: string) {
   await waitFor(() => expect(searchShowsMock).toHaveBeenCalledWith(text));
 }
 
-describe('search', () => {
+describe('searching for shows', () => {
   it('prompts for a query at first', async () => {
     await render(<SearchScreen />);
     expect(screen.getByText('Find a show')).toBeOnTheScreen();
