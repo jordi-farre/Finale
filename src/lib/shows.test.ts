@@ -136,6 +136,13 @@ describe('seasonState', () => {
     });
   });
 
+  it('is complete when TMDB still lists an episode out today as the next one, as with Carrie', () => {
+    const dropDay = '2026-09-30';
+    const stale = { ...details, status: 'Ended', next_episode_to_air: { season_number: 1, episode_number: 1, air_date: dropDay } };
+    const state = seasonState(seasonDetails(1, Array(8).fill(dropDay), 50, 'finale'), stale, NOW);
+    expect(state).toMatchObject({ kind: 'complete', seasonNumber: 1, episodeCount: 8 });
+  });
+
   it('is upcoming when nothing has aired', () => {
     const state = seasonState(seasonDetails(4, ['2027-01-10', '2027-01-17']), details, NOW);
     expect(state).toEqual({ kind: 'upcoming', seasonNumber: 4, premiereDate: '2027-01-10' });

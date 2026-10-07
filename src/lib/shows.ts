@@ -87,7 +87,9 @@ export function seasonState(
     return { kind: 'upcoming', seasonNumber, premiereDate: episodes[0]?.air_date ?? season.air_date };
   }
 
-  const moreAnnouncedThisSeason = details.next_episode_to_air?.season_number === seasonNumber;
+  const next = details.next_episode_to_air;
+  const moreAnnouncedThisSeason =
+    next?.season_number === seasonNumber && !aired.some((episode) => episode.episode_number === next.episode_number);
 
   const perEpisode = episodeLength(details, season);
 
