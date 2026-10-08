@@ -3,6 +3,7 @@ import { Text, TouchableRipple, useTheme } from 'react-native-paper';
 
 import { Poster } from '@/components/Poster';
 import { RatingLabel } from '@/components/RatingLabel';
+import { StatusPlaceholder } from '@/components/Skeleton';
 import { StatusChip } from '@/components/StatusChip';
 import type { ShowRating, ShowStatus } from '@/lib/types';
 
@@ -12,11 +13,12 @@ type Props = {
   posterPath: string | null;
   status?: ShowStatus;
   rating?: ShowRating | null;
+  statusPending?: boolean;
   detail?: string | null;
   onPress: () => void;
 };
 
-export function ShowRow({ name, year, posterPath, status, rating, detail, onPress }: Props) {
+export function ShowRow({ name, year, posterPath, status, rating, statusPending = false, detail, onPress }: Props) {
   const theme = useTheme();
   return (
     <TouchableRipple onPress={onPress} accessibilityRole="button" accessibilityLabel={name}>
@@ -31,6 +33,7 @@ export function ShowRow({ name, year, posterPath, status, rating, detail, onPres
               </Text>
             ) : null}
           </Text>
+          {statusPending && !status ? <StatusPlaceholder /> : null}
           {status || rating ? (
             <View className="flex-row items-center gap-sm">
               {status ? <StatusChip status={status} /> : null}

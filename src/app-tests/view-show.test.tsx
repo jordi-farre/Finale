@@ -4,7 +4,7 @@ import ShowScreen from '@/app/show/[id]';
 import { fetchSnapshot } from '@/lib/tmdb';
 import { useWatchlist } from '@/store/useWatchlist';
 import { followed, season, snapshot } from '@/test-utils/fixtures';
-import { render, screen } from '@/test-utils/render';
+import { act, render, screen } from '@/test-utils/render';
 
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), push: jest.fn() },
@@ -21,6 +21,17 @@ beforeEach(() => {
 });
 
 describe('viewing a show', () => {
+  it('shows a placeholder page while the show loads', async () => {
+    let resolve!: (value: ReturnType<typeof snapshot>) => void;
+    fetchSnapshotMock.mockReturnValue(new Promise((done) => (resolve = done)));
+    await render(<ShowScreen />);
+    expect(screen.getByLabelText('Loading show')).toBeOnTheScreen();
+
+    await act(async () => resolve(snapshot({ status: 'cancelled', seasonCount: 2 })));
+    expect(await screen.findByText('Cancelled after 2 seasons. The story may not get an ending.')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Loading show')).toBeNull();
+  });
+
   it('warns that a cancelled show may not have an ending', async () => {
     fetchSnapshotMock.mockResolvedValue(snapshot({ status: 'cancelled', seasonCount: 2 }));
     await render(<ShowScreen />);

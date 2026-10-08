@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
-import { ActivityIndicator, Appbar, Button, Card, Icon, Snackbar, Text, useTheme } from 'react-native-paper';
+import { Appbar, Button, Card, Icon, Snackbar, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Poster } from '@/components/Poster';
 import { RatingLabel } from '@/components/RatingLabel';
 import { SeasonRow } from '@/components/SeasonRow';
+import { ShowPageSkeleton } from '@/components/Skeleton';
 import { StatusChip } from '@/components/StatusChip';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
 import { canNotify, endingNote, followHint, isWatchlistOnly } from '@/lib/shows';
@@ -89,7 +90,7 @@ export default function ShowScreen() {
             Couldn&apos;t load this show. Check your connection and try again.
           </Text>
         ) : (
-          <ActivityIndicator className="mt-lg" />
+          <ShowPageSkeleton />
         )}
       </View>
     );

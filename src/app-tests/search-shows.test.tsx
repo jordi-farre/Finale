@@ -1,7 +1,7 @@
 import SearchScreen from '@/app/search';
 import { getShow, searchShows } from '@/lib/tmdb';
 import { showDetails } from '@/test-utils/fixtures';
-import { fireEvent, render, screen, waitFor } from '@/test-utils/render';
+import { act, fireEvent, render, screen, waitFor } from '@/test-utils/render';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 jest.mock('@/lib/tmdb', () => ({
@@ -18,7 +18,52 @@ async function typeQuery(text: string) {
   await waitFor(() => expect(searchShowsMock).toHaveBeenCalledWith(text));
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+const firefly = { id: 1, name: 'Firefly', first_air_date: '2002-09-20', poster_path: null, overview: '' };
+
 describe('searching for shows', () => {
+  it('shows placeholder rows while the search is on its way', async () => {
+    const search = deferred<Awaited<ReturnType<typeof searchShows>>>();
+    searchShowsMock.mockReturnValue(search.promise);
+    getShowMock.mockResolvedValue(showDetails({ id: 1, status: 'Canceled' }));
+    await render(<SearchScreen />);
+    await typeQuery('firefly');
+    expect(screen.getByLabelText('Loading results')).toBeOnTheScreen();
+
+    await act(async () => search.resolve([firefly]));
+    expect(await screen.findByText('Cancelled')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Loading results')).toBeNull();
+  });
+
+  it('keeps a slot for each status while it loads, so rows do not jump', async () => {
+    const details = deferred<Awaited<ReturnType<typeof getShow>>>();
+    searchShowsMock.mockResolvedValue([firefly]);
+    getShowMock.mockReturnValue(details.promise);
+    await render(<SearchScreen />);
+    await typeQuery('firefly');
+    expect(await screen.findByTestId('status-placeholder')).toBeOnTheScreen();
+
+    await act(async () => details.resolve(showDetails({ id: 1, status: 'Canceled' })));
+    expect(await screen.findByText('Cancelled')).toBeOnTheScreen();
+    expect(screen.queryByTestId('status-placeholder')).toBeNull();
+  });
+
+  it('drops the status slot when the details cannot be loaded', async () => {
+    searchShowsMock.mockResolvedValue([firefly]);
+    getShowMock.mockRejectedValue(new Error('offline'));
+    await render(<SearchScreen />);
+    await typeQuery('firefly');
+    await waitFor(() => expect(screen.queryByTestId('status-placeholder')).toBeNull());
+    expect(screen.getByLabelText('Firefly')).toBeOnTheScreen();
+  });
+
   it('prompts for a query at first', async () => {
     await render(<SearchScreen />);
     expect(screen.getByText('Find a show')).toBeOnTheScreen();

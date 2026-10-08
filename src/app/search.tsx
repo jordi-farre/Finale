@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
-import { ActivityIndicator, Appbar, Searchbar, Text, useTheme } from 'react-native-paper';
+import { Appbar, Searchbar, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
 import { MissingProxyBanner } from '@/components/MissingProxyBanner';
 import { ShowRow } from '@/components/ShowRow';
+import { SearchResultsSkeleton } from '@/components/Skeleton';
 import { mapStatus, showRating } from '@/lib/shows';
 import { getShow, searchShows, type TmdbSearchResult } from '@/lib/tmdb';
 import type { ShowRating, ShowStatus } from '@/lib/types';
@@ -31,6 +32,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState<SearchResponse>({ query: '', results: [], error: false });
   const [infos, setInfos] = useState<Record<number, ResultInfo>>({});
+  const [lookedUp, setLookedUp] = useState('');
   const trimmed = query.trim();
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function SearchScreen() {
           next[lookup.value.id] = { status: mapStatus(lookup.value.status), rating: showRating(lookup.value) };
         }
         setInfos((previous) => ({ ...previous, ...next }));
+        setLookedUp(trimmed);
       } catch {
         if (active) setResponse({ query: trimmed, results: [], error: true });
       }
@@ -75,7 +78,7 @@ export default function SearchScreen() {
         <Searchbar placeholder="Search TV shows" value={query} onChangeText={setQuery} autoFocus />
       </View>
 
-      {loading && results.length === 0 ? <ActivityIndicator className="mt-lg" /> : null}
+      {loading && results.length === 0 ? <SearchResultsSkeleton /> : null}
       {error ? (
         <Text variant="bodyMedium" className="px-md" style={{ color: theme.colors.error }}>
           Couldn&apos;t load shows. Check your connection and try again.
@@ -88,7 +91,7 @@ export default function SearchScreen() {
           title="Find a show"
           message="You'll see right away whether it's still going, ended, or was cancelled."
         />
-      ) : !loading && !error && results.length === 0 ? (
+      ) : loading && results.length === 0 ? null : !error && results.length === 0 ? (
         <EmptyState icon="television-off" title="No matches" message={`Nothing found for "${trimmed}".`} />
       ) : (
         <FlatList
@@ -96,13 +99,14 @@ export default function SearchScreen() {
           keyExtractor={(show) => String(show.id)}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <ShowRow
               name={item.name}
               year={item.first_air_date ? item.first_air_date.slice(0, 4) : null}
               posterPath={item.poster_path}
               status={infos[item.id]?.status}
               rating={infos[item.id]?.rating}
+              statusPending={index < STATUS_LOOKUPS && !infos[item.id] && lookedUp !== response.query}
               onPress={() => router.push(`/show/${item.id}`)}
             />
           )}

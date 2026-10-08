@@ -153,8 +153,8 @@ src/
                   search-shows, view-show, follow-show, mark-seasons-seen,
                   get-season-notifications, view-finished-shows, change-settings,
                   backup-restore), organized like Punch's
-  components/     ShowRow, SeasonRow, Poster, StatusChip, RatingLabel, EmptyState,
-                  MissingTokenBanner, BackupSection
+  components/     ShowRow, SeasonRow, Poster, StatusChip, RatingLabel, Skeleton (loading
+                  placeholders), EmptyState, MissingProxyBanner, BackupSection
   lib/            TMDB client, proxy config, show/season rules, alert rules, notifications,
                   background refresh, AsyncStorage I/O, backup files, types
   store/          zustand stores: watchlist, theme preference, notification setting
