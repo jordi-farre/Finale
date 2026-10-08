@@ -48,17 +48,16 @@ Finale uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## Data safety form
 
-Unlike Punch, Finale sends data off the device: search text and show IDs go to TMDB to fetch
-results. Play counts data sent from the app to a third party as collected, so the conservative
-answer is:
+Unlike Punch, Finale sends data off the device: search text and show IDs go to Finale's own proxy
+on Cloudflare, which forwards them to TMDB. Nothing is logged or stored per user (see
+[`PRIVACY.md`](../../PRIVACY.md)), so the conservative answer is:
 
-- **App activity → In-app search history**: collected, not shared, processed only to provide the
-  feature, not optional (search requires it), no account link.
+- **App activity → In-app search history**: collected, **processed ephemerally**, not shared (TMDB
+  only sees the request coming from the proxy, as the source of the results), needed for the
+  feature and not optional, no account link.
 - Everything else: not collected.
 - Data encrypted in transit: yes (HTTPS).
 - Users can request deletion: not applicable; nothing is held by the developer.
-
-Revisit this if TMDB requests move behind a proxy of our own.
 
 ## Assets
 

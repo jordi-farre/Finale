@@ -4,7 +4,7 @@ import { Appbar, Icon, Text, TouchableRipple, useTheme } from 'react-native-pape
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
-import { MissingTokenBanner } from '@/components/MissingTokenBanner';
+import { MissingProxyBanner } from '@/components/MissingProxyBanner';
 import { ShowRow } from '@/components/ShowRow';
 import { watchlistDetail, watchlistGroup, type WatchlistGroup } from '@/lib/shows';
 import type { FollowedShow } from '@/lib/types';
@@ -41,7 +41,7 @@ export default function WatchlistScreen() {
         <Appbar.Action icon="flag-checkered" accessibilityLabel="Finished shows" onPress={openFinished} />
         <Appbar.Action icon="cog-outline" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
       </Appbar.Header>
-      <MissingTokenBanner />
+      <MissingProxyBanner />
 
       {shows.length === 0 ? (
         <EmptyState

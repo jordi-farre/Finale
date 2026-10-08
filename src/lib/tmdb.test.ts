@@ -1,5 +1,5 @@
-import { fetchSnapshot, hasTmdbToken, posterUrl, searchShows, TmdbError } from '@/lib/tmdb';
-import { readTmdbToken } from '@/lib/token';
+import { readTmdbProxyUrl } from '@/lib/proxy';
+import { fetchSnapshot, isTmdbConfigured, posterUrl, searchShows, TmdbError } from '@/lib/tmdb';
 import { seasonDetails, showDetails } from '@/test-utils/fixtures';
 
 function jsonResponse(body: unknown, status = 200) {
@@ -14,13 +14,13 @@ beforeEach(() => {
 });
 
 describe('searchShows', () => {
-  it('sends the query with the bearer token', async () => {
+  it('sends the query through the proxy, with no token in the app', async () => {
     fetchMock.mockReturnValue(jsonResponse({ results: [{ id: 7, name: 'Firefly' }] }));
     const results = await searchShows('  firefly ');
     expect(results).toEqual([{ id: 7, name: 'Firefly' }]);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://api.themoviedb.org/3/search/tv?query=firefly&include_adult=false');
-    expect(init.headers.Authorization).toBe('Bearer test-token');
+    expect(url).toBe('https://proxy.test/3/search/tv?query=firefly&include_adult=false');
+    expect(init.headers.Authorization).toBeUndefined();
   });
 
   it('skips the request for an empty query', async () => {
@@ -33,9 +33,9 @@ describe('searchShows', () => {
     await expect(searchShows('firefly')).rejects.toEqual(new TmdbError('TMDB request failed (401)', 401));
   });
 
-  it('throws without a token', async () => {
-    jest.mocked(readTmdbToken).mockReturnValue(null);
-    expect(hasTmdbToken()).toBe(false);
+  it('throws when no proxy is configured', async () => {
+    jest.mocked(readTmdbProxyUrl).mockReturnValue(null);
+    expect(isTmdbConfigured()).toBe(false);
     await expect(searchShows('firefly')).rejects.toBeInstanceOf(TmdbError);
   });
 });
@@ -47,8 +47,8 @@ describe('fetchSnapshot', () => {
     );
     const snap = await fetchSnapshot(1, new Date(2026, 8, 30));
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      'https://api.themoviedb.org/3/tv/1',
-      'https://api.themoviedb.org/3/tv/1/season/2',
+      'https://proxy.test/3/tv/1',
+      'https://proxy.test/3/tv/1/season/2',
     ]);
     expect(snap.latestSeason).toMatchObject({ kind: 'complete', seasonNumber: 2, episodeCount: 2 });
   });

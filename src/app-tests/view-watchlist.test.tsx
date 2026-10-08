@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 
 import WatchlistScreen from '@/app/index';
-import { readTmdbToken } from '@/lib/token';
+import { readTmdbProxyUrl } from '@/lib/proxy';
 import { useWatchlist } from '@/store/useWatchlist';
 import { followed, season } from '@/test-utils/fixtures';
 import { fireEvent, render, screen } from '@/test-utils/render';
@@ -84,11 +84,11 @@ describe('viewing the watchlist', () => {
     expect(router.push).toHaveBeenCalledWith('/show/42');
   });
 
-  it('tells a developer how to add a missing TMDB token', async () => {
-    jest.mocked(readTmdbToken).mockReturnValue(null);
+  it('tells a developer how to configure a missing TMDB proxy', async () => {
+    jest.mocked(readTmdbProxyUrl).mockReturnValue(null);
     useWatchlist.setState({ shows: [], hydrated: true });
     await render(<WatchlistScreen />);
-    expect(screen.getByText(/Add TMDB_TOKEN to .env.local/)).toBeOnTheScreen();
+    expect(screen.getByText(/No TMDB proxy configured/)).toBeOnTheScreen();
   });
 
   describe('in a release build', () => {
@@ -104,11 +104,11 @@ describe('viewing the watchlist', () => {
     });
 
     it('shows users a plain message instead of setup instructions', async () => {
-      jest.mocked(readTmdbToken).mockReturnValue(null);
+      jest.mocked(readTmdbProxyUrl).mockReturnValue(null);
       useWatchlist.setState({ shows: [], hydrated: true });
       await render(<WatchlistScreen />);
       expect(screen.getByText("Show info isn't available in this version of Finale. Please update the app.")).toBeOnTheScreen();
-      expect(screen.queryByText(/TMDB_TOKEN/)).toBeNull();
+      expect(screen.queryByText(/TMDB_PROXY_URL/)).toBeNull();
     });
   });
 });

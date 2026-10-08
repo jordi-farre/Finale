@@ -12,7 +12,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTappedShowId } from '@/hooks/use-tapped-show-id';
 import { registerBackgroundRefresh } from '@/lib/backgroundRefresh';
 import { configureNotifications } from '@/lib/notifications';
-import { hasTmdbToken } from '@/lib/tmdb';
+import { isTmdbConfigured } from '@/lib/tmdb';
 import { useAlertSettings } from '@/store/useAlertSettings';
 import { useThemePreference } from '@/store/useThemePreference';
 import { useWatchlist } from '@/store/useWatchlist';
@@ -69,7 +69,7 @@ export default function RootLayout() {
     if (!hydrated) return;
     SplashScreen.hideAsync();
     void registerBackgroundRefresh().catch(() => {});
-    if (!hasTmdbToken()) return;
+    if (!isTmdbConfigured()) return;
     let lastRefresh = Date.now();
     void useWatchlist.getState().refreshAll();
     const subscription = AppState.addEventListener('change', (state) => {

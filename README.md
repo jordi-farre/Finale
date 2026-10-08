@@ -51,41 +51,52 @@ Planned next: marathon mode (a resume bookmark plus a runtime planner).
 
 ## Getting started
 
-1. Create a free account at [themoviedb.org](https://www.themoviedb.org/signup), then go to
-   Settings → API and copy the **API Read Access Token** (the long one, not the short API key).
-2. Put it in `.env.local` (gitignored):
+```bash
+npm install
+npm start
+```
 
-   ```bash
-   cp .env.example .env.local
-   ```
+Scan the QR code with [Expo Go](https://expo.dev/go) on your phone, or `npm run web` for a
+browser. Show data comes through the deployed TMDB proxy (its address is `extra.tmdbProxyUrl` in
+`app.json`), so no TMDB account or token is needed to work on the app.
 
-   and set `TMDB_TOKEN=<your token>`.
-3. Install and run:
+To point the app at a different proxy, such as `npm run dev` in `worker/` (see below), set
+`TMDB_PROXY_URL` in `.env.local` (`cp .env.example .env.local`) and restart with
+`npx expo start --clear`. Metro caches the app config, so a plain restart keeps the old address.
 
-   ```bash
-   npm install
-   npm start
-   ```
+## The TMDB proxy
 
-   Scan the QR code with [Expo Go](https://expo.dev/go) on your phone, or `npm run web` for a
-   browser.
+The app never holds a TMDB token. It calls a small Cloudflare Worker in [`worker/`](worker/),
+which keeps the token as a Cloudflare secret and forwards only the three requests the app makes
+(search, show details, season details) to TMDB. See [`worker/src/index.ts`](worker/src/index.ts):
 
-After adding or changing the token, restart with `npx expo start --clear`. Metro caches the app
-config, so a plain restart can keep running without it.
+- **Allowlist**: any other path, method, or an empty or overly long search is rejected without
+  reaching TMDB. Search parameters are rebuilt from scratch (`include_adult` is always `false`).
+- **Cache**: responses are cached at Cloudflare's edge (searches for an hour, show and season
+  details for three hours), so most app requests never hit TMDB.
+- **Rate limit**: 120 requests a minute per IP, per Cloudflare location, via the Workers Rate
+  Limiting binding. Its address is public, so this is what keeps it from being used as a free
+  TMDB relay; if abuse ever shows up, Firebase App Check / Play Integrity is the next step.
+- **No logs**: Workers observability is turned off in [`worker/wrangler.jsonc`](worker/wrangler.jsonc).
 
-## The TMDB token
+The Worker is defined as code: `wrangler.jsonc` declares it, and
+[`.github/workflows/worker.yml`](.github/workflows/worker.yml) typechecks and tests it on every
+change under `worker/`, then deploys it from `main` and sets the `TMDB_TOKEN` secret.
+Working on it locally:
 
-The token is never shipped in plain text. [`app.config.js`](app.config.js) reads `TMDB_TOKEN` at
-build time, XORs it with a random per-build key, and stores both in the app config.
-[`src/lib/token.ts`](src/lib/token.ts) decodes it at runtime via `expo-constants`. This stops
-automated scanners that grep published APKs for key patterns (a TMDB token is a JWT starting with
-`eyJ`). It does **not** stop a determined person: the token is still sent in the `Authorization`
-header on every request, so intercepting the app's traffic reveals it.
+```bash
+cd worker
+npm install
+echo "TMDB_TOKEN=<your TMDB read access token>" > .dev.vars
+npm run dev
+npm test
+```
 
-That's acceptable for a free, read-only token during personal use and a closed test. Before a
-public release, move TMDB calls behind a small proxy (e.g. a Cloudflare Worker holding the token,
-allowing only the search/show/season endpoints, with caching and per-IP rate limits), so the app
-never holds the token at all.
+One-time setup for the deploy job (GitHub → Settings → Secrets and variables → Actions):
+
+1. `CLOUDFLARE_API_TOKEN`: a Cloudflare API token from the "Edit Cloudflare Workers" template.
+2. `CLOUDFLARE_ACCOUNT_ID`: shown on the Cloudflare dashboard's Workers overview.
+3. `TMDB_TOKEN`: the TMDB **API Read Access Token** (themoviedb.org → Settings → API).
 
 ## Scripts
 
@@ -104,6 +115,9 @@ never holds the token at all.
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) mirrors Punch's:
 
 - **test**: typecheck, lint, then the Jest suite, on every push to `main` and every pull request.
+- **Worker** ([`.github/workflows/worker.yml`](.github/workflows/worker.yml)): typechecks and
+  tests the TMDB proxy on changes under `worker/`, then deploys it from `main` (see
+  [The TMDB proxy](#the-tmdb-proxy)).
 - **build-android**: an [EAS Build](https://docs.expo.dev/build/introduction/), gated on `test`.
   Manual only: Actions tab → CI → Run workflow, picking `preview` (installable APK) or
   `production` (Play Store `.aab`).
@@ -114,8 +128,6 @@ One-time setup for the build job:
    `extra.eas.projectId` and `owner` into `app.json`).
 2. Add an `EXPO_TOKEN` secret (from [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens))
    under the repo's Settings → Secrets and variables → Actions.
-3. Add `TMDB_TOKEN` to the `preview` and `production` EAS environments
-   (`npx eas-cli@latest env:create`, visibility `secret`), since builds don't read `.env.local`.
 
 ## Tech stack
 
@@ -131,6 +143,7 @@ One-time setup for the build job:
 ## Project structure
 
 ```
+worker/           Cloudflare Worker that proxies TMDB (own package, tests and deploy workflow)
 index.ts          entry point: defines the background task, then starts Expo Router
 assets/source/    icon generator (the PNGs in assets/images are its output)
 store/play/       Play Store listing copy, feature graphic, 512px icon, privacy policy page
@@ -142,7 +155,7 @@ src/
                   backup-restore), organized like Punch's
   components/     ShowRow, SeasonRow, Poster, StatusChip, RatingLabel, EmptyState,
                   MissingTokenBanner, BackupSection
-  lib/            TMDB client, token decoding, show/season rules, alert rules, notifications,
+  lib/            TMDB client, proxy config, show/season rules, alert rules, notifications,
                   background refresh, AsyncStorage I/O, backup files, types
   store/          zustand stores: watchlist, theme preference, notification setting
   theme/          MD3 + Tailwind tokens, the Paper theme, NativeWind interop
@@ -215,14 +228,13 @@ There's no account and no backend of ours. The watchlist lives in local AsyncSto
 `android:allowBackup` (set to `true` in `app.json`), and on iOS
 `RCTAsyncStorageExcludeFromBackup: false` overrides the library's default of excluding itself.
 
-Unlike Punch, the app does send data off the device: search text, show IDs and poster requests go
-straight to TMDB. That's disclosed in [`PRIVACY.md`](PRIVACY.md) and in the Play data safety
-answers in [`store/play/listing.md`](store/play/listing.md).
+Unlike Punch, the app does send data off the device: search text and show IDs go through the TMDB
+proxy (no logs, nothing stored per user), and poster images load straight from TMDB. That's
+disclosed in [`PRIVACY.md`](PRIVACY.md) and in the Play data safety answers in
+[`store/play/listing.md`](store/play/listing.md).
 
 ## Publishing
 
-- **Before any public release**: move TMDB behind a proxy (see [The TMDB token](#the-tmdb-token)),
-  then update `PRIVACY.md` and the data safety answers to match.
 - **Privacy policy URL**: [`PRIVACY.md`](PRIVACY.md) is the copy of record; publish
   [`store/play/privacy-policy.html`](store/play/privacy-policy.html) somewhere public and use that
   URL in Play Console.

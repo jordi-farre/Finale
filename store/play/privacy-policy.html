@@ -216,13 +216,13 @@
   </div>
 
   <h1>Privacy Policy</h1>
-  <div class="meta">EFFECTIVE 2026&#8209;10&#8209;02 &nbsp;·&nbsp; NO. 001</div>
+  <div class="meta">EFFECTIVE 2026&#8209;10&#8209;08 &nbsp;·&nbsp; NO. 001</div>
 
   <div class="tear" aria-hidden="true"></div>
 
   <p class="lede">
-    Finale has no account, no server of its own, and no analytics. It does talk to one outside
-    service, The Movie Database (TMDB), to look up shows. Here's the whole picture.
+    Finale has no account and no analytics. It looks shows up on The Movie Database (TMDB) through
+    a small server of its own. Here's the whole picture.
   </p>
 
   <section>
@@ -238,16 +238,24 @@
   <section>
     <div class="eyebrow">02 — What goes to TMDB</div>
     <h2>Only what's needed to look shows up.</h2>
-    <p>To find shows and check their status, the app sends requests directly from your phone to TMDB:</p>
+    <p>To find shows and check their status, the app sends a small server Finale runs on Cloudflare:</p>
     <ul>
       <li>the text you type into search,</li>
-      <li>the TMDB IDs of the shows you open or follow, to fetch their status and episode dates,</li>
-      <li>requests for poster images.</li>
+      <li>the TMDB IDs of the shows you open or follow, to fetch their status and episode dates.</li>
     </ul>
     <p>
-      Like any website, TMDB receives your IP address with those requests. Nothing that identifies
-      you (name, email, account) is sent, and we don't receive a copy. TMDB's handling of that
-      traffic is covered by the <a href="https://www.themoviedb.org/privacy-policy">TMDB privacy policy</a>.
+      That server forwards the request to TMDB and passes the answer back. It keeps no logs and
+      doesn't store your requests. Answers are cached for a few hours so repeated lookups don't hit
+      TMDB again; the cache holds only the search text or show ID and TMDB's answer, never anything
+      about who asked. Your IP address is used only for a short-lived rate limit that stops the
+      server being abused, and isn't stored. Cloudflare handles the connection itself under the
+      <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare privacy policy</a>, and TMDB sees
+      requests coming from our server, not from you.
+    </p>
+    <p>
+      Poster images load directly from TMDB's image servers, which receive your IP address like any
+      website does; that's covered by the <a href="https://www.themoviedb.org/privacy-policy">TMDB privacy policy</a>.
+      Nothing that identifies you (name, email, account) is sent anywhere.
     </p>
   </section>
 
@@ -286,9 +294,8 @@
     <div class="eyebrow">06 — Changes</div>
     <h2>You'll hear about it first.</h2>
     <p>
-      If Finale changes in a way that touches this policy (for example, moving TMDB requests behind
-      a server of our own), this policy will say so, with a new effective date, before that version
-      reaches you.
+      If Finale changes in a way that touches this policy, it will say so, with a new effective date,
+      before that version reaches you.
     </p>
   </section>
 

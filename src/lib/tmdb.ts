@@ -1,8 +1,7 @@
 import { buildSnapshot, currentSeasonNumber } from '@/lib/shows';
-import { readTmdbToken } from '@/lib/token';
+import { readTmdbProxyUrl } from '@/lib/proxy';
 import type { ShowSnapshot } from '@/lib/types';
 
-const API_BASE = 'https://api.themoviedb.org/3';
 const IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 export type TmdbEpisodeRef = {
@@ -66,8 +65,8 @@ export class TmdbError extends Error {
   }
 }
 
-export function hasTmdbToken(): boolean {
-  return readTmdbToken() !== null;
+export function isTmdbConfigured(): boolean {
+  return readTmdbProxyUrl() !== null;
 }
 
 export function posterUrl(path: string | null, size: 'w92' | 'w185' | 'w342' = 'w185'): string | null {
@@ -75,11 +74,11 @@ export function posterUrl(path: string | null, size: 'w92' | 'w185' | 'w342' = '
 }
 
 async function get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
-  const token = readTmdbToken();
-  if (!token) throw new TmdbError('Missing TMDB token');
+  const base = readTmdbProxyUrl();
+  if (!base) throw new TmdbError('TMDB proxy not configured');
   const query = new URLSearchParams(params).toString();
-  const response = await fetch(`${API_BASE}${path}${query ? `?${query}` : ''}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  const response = await fetch(`${base}/3${path}${query ? `?${query}` : ''}`, {
+    headers: { Accept: 'application/json' },
   });
   if (!response.ok) throw new TmdbError(`TMDB request failed (${response.status})`, response.status);
   return (await response.json()) as T;

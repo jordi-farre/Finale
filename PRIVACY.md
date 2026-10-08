@@ -1,9 +1,9 @@
 # Finale Privacy Policy
 
-**Effective 2026-10-02**
+**Effective 2026-10-08**
 
-Finale has no account, no server of its own, and no analytics. It does talk to one outside
-service, The Movie Database (TMDB), to look up shows. Here's the whole picture.
+Finale has no account and no analytics. It looks shows up on The Movie Database (TMDB) through a
+small server of its own. Here's the whole picture.
 
 ## What we collect
 
@@ -13,16 +13,22 @@ service.
 
 ## What goes to TMDB
 
-To find shows and check their status, the app sends requests directly from your phone to
-[TMDB](https://www.themoviedb.org):
+To find shows and check their status, the app sends a small server Finale runs on Cloudflare:
 
 - the text you type into search,
-- the TMDB IDs of the shows you open or follow, to fetch their status and episode dates,
-- requests for poster images.
+- the TMDB IDs of the shows you open or follow, to fetch their status and episode dates.
 
-Like any website, TMDB receives your IP address with those requests. Nothing that identifies you
-(name, email, account) is sent, and we don't receive a copy. TMDB's handling of that traffic is
-covered by the [TMDB privacy policy](https://www.themoviedb.org/privacy-policy).
+That server forwards the request to [TMDB](https://www.themoviedb.org) and passes the answer back.
+It keeps no logs and doesn't store your requests. Answers are cached for a few hours so repeated
+lookups don't hit TMDB again; the cache holds only the search text or show ID and TMDB's answer,
+never anything about who asked. Your IP address is used only for a short-lived rate limit that
+stops the server being abused, and isn't stored. Cloudflare handles the connection itself under
+the [Cloudflare privacy policy](https://www.cloudflare.com/privacypolicy/), and TMDB sees requests
+coming from our server, not from you.
+
+Poster images load directly from TMDB's image servers, which receive your IP address like any
+website does; that's covered by the [TMDB privacy policy](https://www.themoviedb.org/privacy-policy).
+Nothing that identifies you (name, email, account) is sent anywhere.
 
 ## Where your data lives
 
@@ -47,9 +53,8 @@ Finale isn't directed at children and collects nothing from anyone.
 
 ## Changes
 
-If Finale changes in a way that touches this policy (for example, moving TMDB requests behind a
-server of our own), this file will say so, with a new effective date, before that version reaches
-you. The git history of this file shows exactly what changed and when.
+If Finale changes in a way that touches this policy, this file will say so, with a new effective
+date, before that version reaches you. The git history of this file shows exactly what changed and when.
 
 ## Questions
 

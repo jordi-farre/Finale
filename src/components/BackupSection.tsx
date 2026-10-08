@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Button, Dialog, Portal, Snackbar, Text, useTheme } from 'react-native-paper';
 
 import { exportBackupFile, pickBackupFile } from '@/lib/backupFile';
-import { hasTmdbToken } from '@/lib/tmdb';
+import { isTmdbConfigured } from '@/lib/tmdb';
 import type { PersistedState } from '@/lib/types';
 import { useWatchlist } from '@/store/useWatchlist';
 
@@ -27,7 +27,7 @@ export function BackupSection() {
   function handleConfirmImport() {
     if (pendingImport) {
       useWatchlist.getState().replaceAll(pendingImport);
-      if (hasTmdbToken()) void useWatchlist.getState().refreshAll();
+      if (isTmdbConfigured()) void useWatchlist.getState().refreshAll();
     }
     setPendingImport(null);
     setMessage('Backup restored');

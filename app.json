@@ -67,7 +67,8 @@
       "router": {},
       "eas": {
         "projectId": "243bdabc-cd7e-4bd8-9fbb-77a20a57b22b"
-      }
+      },
+      "tmdbProxyUrl": "https://finale-tmdb.jordifr.workers.dev"
     },
     "owner": "jordifr"
   }

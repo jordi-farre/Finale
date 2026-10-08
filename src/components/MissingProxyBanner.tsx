@@ -1,14 +1,15 @@
 import { View } from 'react-native';
 import { Icon, Text, useTheme } from 'react-native-paper';
 
-import { hasTmdbToken } from '@/lib/tmdb';
+import { isTmdbConfigured } from '@/lib/tmdb';
 
-const DEVELOPER_MESSAGE = 'No TMDB token found. Add TMDB_TOKEN to .env.local and restart with npx expo start --clear.';
+const DEVELOPER_MESSAGE =
+  'No TMDB proxy configured. Set extra.tmdbProxyUrl in app.json, or TMDB_PROXY_URL in .env.local and restart with npx expo start --clear.';
 const USER_MESSAGE = "Show info isn't available in this version of Finale. Please update the app.";
 
-export function MissingTokenBanner() {
+export function MissingProxyBanner() {
   const theme = useTheme();
-  if (hasTmdbToken()) return null;
+  if (isTmdbConfigured()) return null;
   return (
     <View
       className="mx-md mb-sm flex-row items-center gap-sm rounded-md p-md"

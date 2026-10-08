@@ -17,13 +17,13 @@ jest.mock('expo-notifications', () => ({
   AndroidImportance: { DEFAULT: 3 },
 }));
 
-jest.mock('@/lib/token', () => ({ readTmdbToken: jest.fn(() => 'test-token') }));
+jest.mock('@/lib/proxy', () => ({ readTmdbProxyUrl: jest.fn(() => 'https://proxy.test') }));
 
 afterEach(async () => {
   cleanup();
   await AsyncStorage.clear();
-  const { readTmdbToken } = require('@/lib/token');
-  if (jest.isMockFunction(readTmdbToken)) readTmdbToken.mockReturnValue('test-token');
+  const { readTmdbProxyUrl } = require('@/lib/proxy');
+  if (jest.isMockFunction(readTmdbProxyUrl)) readTmdbProxyUrl.mockReturnValue('https://proxy.test');
   const { useWatchlist } = require('@/store/useWatchlist');
   useWatchlist.setState({ shows: [], hydrated: false, refreshing: false });
   require('@/store/useAlertSettings').useAlertSettings.setState({ enabled: true, hydrated: false });

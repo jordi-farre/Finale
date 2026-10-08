@@ -5,7 +5,7 @@ import { ActivityIndicator, Appbar, Searchbar, Text, useTheme } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
-import { MissingTokenBanner } from '@/components/MissingTokenBanner';
+import { MissingProxyBanner } from '@/components/MissingProxyBanner';
 import { ShowRow } from '@/components/ShowRow';
 import { mapStatus, showRating } from '@/lib/shows';
 import { getShow, searchShows, type TmdbSearchResult } from '@/lib/tmdb';
@@ -70,7 +70,7 @@ export default function SearchScreen() {
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title="Search" />
       </Appbar.Header>
-      <MissingTokenBanner />
+      <MissingProxyBanner />
       <View className="px-md pb-sm">
         <Searchbar placeholder="Search TV shows" value={query} onChangeText={setQuery} autoFocus />
       </View>
