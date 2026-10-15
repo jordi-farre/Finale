@@ -119,15 +119,21 @@ One-time setup for the deploy job (GitHub → Settings → Secrets and variables
   tests the TMDB proxy on changes under `worker/`, then deploys it from `main` (see
   [The TMDB proxy](#the-tmdb-proxy)).
 - **Preview** ([`.github/workflows/preview.yml`](.github/workflows/preview.yml)): manual only
-  (Actions → Preview → Run workflow). Runs CI, then an [EAS Build](https://docs.expo.dev/build/introduction/)
-  of the `preview` profile: an installable APK.
+  (Actions → Preview → Run workflow). Runs CI, builds the `preview` profile (an installable APK),
+  and replaces the `preview` pre-release on GitHub with it: open that release on the phone and tap
+  `finale-preview.apk`.
 - **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)): manual only
   (Actions → Release → Run workflow), picking `patch`, `minor` or `major`. Runs CI, works out the
   next version from the last `vX.Y.Z` tag (the first release ships `app.json`'s version as is),
-  commits it to `app.json` as "Release X.Y.Z", tags `vX.Y.Z`, builds the `production` profile (Play
-  Store `.aab`), and only once the build succeeds pushes the commit and tag and creates a GitHub
-  release listing the commit messages since the previous tag. The release commit is authored by
-  `github-actions[bot]`.
+  commits it to `app.json` as "Release X.Y.Z", tags `vX.Y.Z`, builds the `production` profile, and
+  only once the build succeeds pushes the commit and tag and creates a GitHub release listing the
+  commit messages since the previous tag, with the Play Store `.aab` attached. The release commit
+  is authored by `github-actions[bot]`.
+
+Both build with [`eas build --local`](https://docs.expo.dev/build-reference/local-builds/) on the
+GitHub runner (Java 17 plus the runner's Android SDK), so they don't use the EAS free plan's monthly
+builds or wait in its queue. EAS still provides the signing keystore and the remote `versionCode`,
+but the builds don't appear on expo.dev.
 
 `version` in `app.json` is the user-facing version and only changes through Release. The Android
 `versionCode` is separate: EAS keeps it remotely and bumps it on every preview and production build.
@@ -254,8 +260,10 @@ disclosed in [`PRIVACY.md`](PRIVACY.md) and in the Play data safety answers in
   on a device before shipping `production`.
 - **Store listing**: copy, assets and remaining to-dos (screenshots) are in
   [`store/play/listing.md`](store/play/listing.md).
-- **Build and submit**: run the Release workflow, then `eas submit --platform android`. A new personal Play developer account needs a closed test with
-  12 testers for 14 days before production.
+- **Build and submit**: run the Release workflow, then upload the `.aab` from the GitHub release
+  in Play Console, or `npx eas-cli@latest submit --platform android --path finale-X.Y.Z.aab`. A
+  new personal Play developer account needs a closed test with 12 testers for 14 days before
+  production.
 
 ## Attribution
 

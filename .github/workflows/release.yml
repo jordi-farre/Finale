@@ -36,6 +36,12 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Install dependencies
         run: npm ci
 
@@ -86,10 +92,9 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build Android
-        id: build
-        run: |
-          eas build --platform android --profile production --non-interactive --json > build.json
-          echo "url=https://expo.dev/accounts/jordifr/projects/finale/builds/$(node -p "require('./build.json')[0].id")" >> "$GITHUB_OUTPUT"
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: eas build --local --platform android --profile production --non-interactive --output "finale-$NEXT.aab"
 
       - name: Push the release
         env:
@@ -101,7 +106,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NEXT: ${{ steps.version.outputs.next }}
           PREVIOUS: ${{ steps.version.outputs.previous }}
-          BUILD_URL: ${{ steps.build.outputs.url }}
         run: |
           {
             if [ -n "$PREVIOUS" ]; then
@@ -111,7 +115,5 @@ jobs:
             else
               echo "First release."
             fi
-            echo
-            echo "Android build: $BUILD_URL"
           } > notes.md
-          gh release create "v$NEXT" --title "Finale $NEXT" --notes-file notes.md
+          gh release create "v$NEXT" "finale-$NEXT.aab" --title "Finale $NEXT" --notes-file notes.md

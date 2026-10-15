@@ -7,6 +7,9 @@ concurrency:
   group: preview
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   test:
     uses: ./.github/workflows/ci.yml
@@ -25,6 +28,12 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Install dependencies
         run: npm ci
 
@@ -36,4 +45,15 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build Android
-        run: eas build --platform android --profile preview --non-interactive
+        run: eas build --local --platform android --profile preview --non-interactive --output finale-preview.apk
+
+      - name: Publish the preview release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete preview --cleanup-tag --yes || true
+          gh release create preview finale-preview.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Finale preview" \
+            --notes "Built from $(git log -1 --format='%h: %s')"
