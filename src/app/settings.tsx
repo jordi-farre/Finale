@@ -1,18 +1,22 @@
 import * as Application from 'expo-application';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { Linking, ScrollView, View } from 'react-native';
 import { Appbar, Button, SegmentedButtons, Switch, Text, useTheme } from 'react-native-paper';
 
 import { BackupSection } from '@/components/BackupSection';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
+import { versionLabel } from '@/lib/version';
 import { useAlertSettings } from '@/store/useAlertSettings';
 import { useThemePreference, type ThemePreference } from '@/store/useThemePreference';
 
-function versionLabel(): string {
-  const version = Constants.expoConfig?.version ?? '';
-  const build = Constants.executionEnvironment === ExecutionEnvironment.StoreClient ? null : Application.nativeBuildVersion;
-  return build ? `Finale ${version} (${build})` : `Finale ${version}`;
+function currentVersionLabel(): string {
+  const buildProfile = Constants.expoConfig?.extra?.buildProfile;
+  return versionLabel({
+    version: Constants.expoConfig?.version ?? '',
+    buildProfile: typeof buildProfile === 'string' ? buildProfile : null,
+    buildNumber: Application.nativeBuildVersion,
+  });
 }
 
 export default function SettingsScreen() {
@@ -77,7 +81,7 @@ export default function SettingsScreen() {
         <BackupSection />
 
         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-          {versionLabel()}
+          {currentVersionLabel()}
         </Text>
       </ScrollView>
     </View>

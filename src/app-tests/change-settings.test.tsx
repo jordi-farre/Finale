@@ -7,6 +7,9 @@ import { THEME_STORAGE_KEY_FOR_TESTS, useThemePreference } from '@/store/useThem
 import { fireEvent, render, screen, waitFor } from '@/test-utils/render';
 
 jest.mock('expo-router', () => ({ router: { back: jest.fn() } }));
+jest.mock('expo-constants', () => ({
+  expoConfig: { version: '1.2.0', extra: { buildProfile: 'production' } },
+}));
 
 const permissions = jest.mocked(Notifications.getPermissionsAsync);
 
@@ -42,6 +45,6 @@ describe('changing settings', () => {
 
   it('shows the app version', async () => {
     await render(<SettingsScreen />);
-    expect(screen.getByText(/^Finale /)).toBeOnTheScreen();
+    expect(screen.getByText('Finale 1.2.0')).toBeOnTheScreen();
   });
 });

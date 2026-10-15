@@ -36,7 +36,8 @@
   often empty, so seasons other than the current one are estimated from the current season's
   average episode runtime. The watchlist sticks to episode counts.
 - **Settings**: system / light / dark theme, a switch for season notifications (with a pointer to
-  system settings when Android blocks them), and the app version with its build number.
+  system settings when Android blocks them), and the app version (`Finale 1.2.0`; preview builds add their build number,
+  `Finale 1.2.0 · preview 23`).
 - **Backup** (Settings), same as Punch's: export everything (followed shows, their last known
   details, seen seasons, and which alerts were already sent) to a JSON file and share it wherever
   you like, or import one to replace what's on the device. Restoring works offline, doesn't replay
@@ -112,17 +113,26 @@ One-time setup for the deploy job (GitHub → Settings → Secrets and variables
 
 ## CI
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) mirrors Punch's:
-
-- **test**: typecheck, lint, then the Jest suite, on every push to `main` and every pull request.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): typecheck, lint, then the Jest
+  suite, on every push to `main` and every pull request. The other app workflows reuse it.
 - **Worker** ([`.github/workflows/worker.yml`](.github/workflows/worker.yml)): typechecks and
   tests the TMDB proxy on changes under `worker/`, then deploys it from `main` (see
   [The TMDB proxy](#the-tmdb-proxy)).
-- **build-android**: an [EAS Build](https://docs.expo.dev/build/introduction/), gated on `test`.
-  Manual only: Actions tab → CI → Run workflow, picking `preview` (installable APK) or
-  `production` (Play Store `.aab`).
+- **Preview** ([`.github/workflows/preview.yml`](.github/workflows/preview.yml)): manual only
+  (Actions → Preview → Run workflow). Runs CI, then an [EAS Build](https://docs.expo.dev/build/introduction/)
+  of the `preview` profile: an installable APK.
+- **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)): manual only
+  (Actions → Release → Run workflow), picking `patch`, `minor` or `major`. Runs CI, works out the
+  next version from the last `vX.Y.Z` tag (the first release ships `app.json`'s version as is),
+  commits it to `app.json` as "Release X.Y.Z", tags `vX.Y.Z`, builds the `production` profile (Play
+  Store `.aab`), and only once the build succeeds pushes the commit and tag and creates a GitHub
+  release listing the commit messages since the previous tag. The release commit is authored by
+  `github-actions[bot]`.
 
-One-time setup for the build job:
+`version` in `app.json` is the user-facing version and only changes through Release. The Android
+`versionCode` is separate: EAS keeps it remotely and bumps it on every preview and production build.
+
+One-time setup for the build jobs:
 
 1. `npx eas-cli@latest login`, then `npx eas-cli@latest init` from the project root (writes
    `extra.eas.projectId` and `owner` into `app.json`).
@@ -244,8 +254,7 @@ disclosed in [`PRIVACY.md`](PRIVACY.md) and in the Play data safety answers in
   on a device before shipping `production`.
 - **Store listing**: copy, assets and remaining to-dos (screenshots) are in
   [`store/play/listing.md`](store/play/listing.md).
-- **Build and submit**: `eas build --profile production --platform android`, then
-  `eas submit --platform android`. A new personal Play developer account needs a closed test with
+- **Build and submit**: run the Release workflow, then `eas submit --platform android`. A new personal Play developer account needs a closed test with
   12 testers for 14 days before production.
 
 ## Attribution

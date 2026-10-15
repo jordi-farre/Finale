@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part of the version to bump (ignored for the first release, which ships the version in app.json)
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Release (Android)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Work out the version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          previous=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)
+          if [ -z "$previous" ]; then
+            next=$(node -p "require('./app.json').expo.version")
+          else
+            next=$(node -e "
+              const [major, minor, patch] = process.argv[1].slice(1).split('.').map(Number);
+              const bumped = { major: [major + 1, 0, 0], minor: [major, minor + 1, 0], patch: [major, minor, patch + 1] };
+              console.log(bumped[process.argv[2]].join('.'));
+            " "$previous" "$BUMP")
+          fi
+          if git rev-parse -q --verify "refs/tags/v$next" >/dev/null; then
+            echo "::error::v$next already exists"
+            exit 1
+          fi
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "next=$next" >> "$GITHUB_OUTPUT"
+          echo "Releasing $next (previous: ${previous:-none})"
+
+      - name: Commit and tag the version
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            config.expo.version = process.argv[1];
+            fs.writeFileSync('app.json', JSON.stringify(config, null, 2) + '\n');
+          " "$NEXT"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898283+github-actions[bot]@users.noreply.github.com'
+          git add app.json
+          git diff --cached --quiet || git commit -m "Release $NEXT"
+          git tag -a "v$NEXT" -m "Finale $NEXT"
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android
+        id: build
+        run: |
+          eas build --platform android --profile production --non-interactive --json > build.json
+          echo "url=https://expo.dev/accounts/jordifr/projects/finale/builds/$(node -p "require('./build.json')[0].id")" >> "$GITHUB_OUTPUT"
+
+      - name: Push the release
+        env:
+          NEXT: ${{ steps.version.outputs.next }}
+        run: git push --atomic origin HEAD:main "v$NEXT"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXT: ${{ steps.version.outputs.next }}
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+          BUILD_URL: ${{ steps.build.outputs.url }}
+        run: |
+          {
+            if [ -n "$PREVIOUS" ]; then
+              echo "## Changes since $PREVIOUS"
+              echo
+              git log --no-merges --format='- %s' "$PREVIOUS..v$NEXT" | grep -v '^- Release [0-9]'
+            else
+              echo "First release."
+            fi
+            echo
+            echo "Android build: $BUILD_URL"
+          } > notes.md
+          gh release create "v$NEXT" --title "Finale $NEXT" --notes-file notes.md
