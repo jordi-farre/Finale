@@ -2,20 +2,30 @@
 
 Copy-paste source for the Play Console store listing. Keep this in sync if the listing changes.
 
-## Short description
+## App name (store title)
 
-_Max 80 characters. Currently 75._
+_Max 30 characters. Currently 23._ Only the store title; the home-screen name stays "Finale".
+Plain "Finale" competes with music notation apps and games, so the title also carries the words
+people actually search for.
 
 ```
-Know if a show was cancelled, and when a season is complete. Then binge it.
+Finale: TV Show Tracker
+```
+
+## Short description
+
+_Max 80 characters. Currently 80._
+
+```
+TV show tracker for bingers: see if a show was cancelled and when a season ends.
 ```
 
 ## Full description
 
-_Max 4000 characters. Currently ~1040._
+_Max 4000 characters. Currently ~1080._
 
 ```
-Finale is a TV tracker for people who binge. Instead of pinging you every week, it tells you what actually matters: whether a show gets an ending, and when a season is fully out.
+Finale is a TV show tracker for people who binge. Instead of pinging you every week, it tells you what actually matters: whether a show gets an ending, and when a season is fully out.
 
 BEFORE YOU START A SHOW
 • Search any series and see right away if it's returning, ended, or cancelled
@@ -27,7 +37,7 @@ WHILE A SEASON AIRS
 
 WHEN IT'S DONE
 • Every season shows its episode count and total runtime, so you know how long the binge will take
-• Tick off the seasons you've seen. Your watchlist is grouped into Ready to binge, Season airing, Waiting for new episodes, and All caught up
+• Tick off the seasons you've seen. Your watchlist is grouped into Ready to binge, Season airing, and Waiting for new episodes, and shows you've finished move to their own list
 
 PRIVATE BY DESIGN
 No account, no sign-in, no ads, no analytics. Your watchlist stays on your phone. Show data comes from The Movie Database (TMDB).
@@ -39,10 +49,10 @@ Finale uses the TMDB API but is not endorsed or certified by TMDB.
 
 | Field | Value |
 | --- | --- |
-| App name | Finale |
+| App name | See [App name](#app-name-store-title) |
 | Category | Entertainment |
 | Contact email | Set directly in Play Console |
-| Privacy policy URL | _To do_: publish [`privacy-policy.html`](privacy-policy.html) (a styled version of [`PRIVACY.md`](../../PRIVACY.md)) and put its URL here |
+| Privacy policy URL | `https://github.com/jordi-farre/Finale/blob/main/PRIVACY.md`. GitHub renders Markdown but shows `.html` files as source, so link [`PRIVACY.md`](../../PRIVACY.md), not [`privacy-policy.html`](privacy-policy.html) |
 | Content rating | No content concerns of its own. Show titles, posters and synopses come from TMDB, so answer the questionnaire with that in mind |
 | Data safety form | See below |
 
