@@ -121,7 +121,11 @@ One-time setup for the deploy job (GitHub → Settings → Secrets and variables
 - **Preview** ([`.github/workflows/preview.yml`](.github/workflows/preview.yml)): manual only
   (Actions → Preview → Run workflow). Runs CI, builds the `preview` profile (an installable APK),
   and replaces the `preview` pre-release on GitHub with it: open that release on the phone and tap
-  `finale-preview.apk`.
+  `finale-preview.apk`. Preview builds are a separate Android app, "Finale Preview"
+  (`com.jordifr.finale.preview`, link scheme `finale-preview`), set in
+  [`app.config.js`](app.config.js), so they install next to the Play Store app with their own data
+  instead of replacing it. EAS keeps a separate signing key for that package, created on its first
+  build.
 - **Release** ([`.github/workflows/release.yml`](.github/workflows/release.yml)): manual only
   (Actions → Release → Run workflow), picking `patch`, `minor` or `major`. Runs CI, works out the
   next version from the last `vX.Y.Z` tag (the first release ships `app.json`'s version as is),
