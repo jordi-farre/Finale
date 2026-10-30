@@ -1,7 +1,9 @@
-import { format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, setHours, startOfDay } from 'date-fns';
 
-import { formatRuntime, toIsoDate } from '@/lib/shows';
-import type { ShowSnapshot } from '@/lib/types';
+import { dropsAtOnce, formatRuntime, toIsoDate } from '@/lib/shows';
+import type { FollowedShow, PlannedAlert, ShowSnapshot } from '@/lib/types';
+
+const DELIVERY_HOUR = 10;
 
 export type ShowAlert = {
   showId: number;
@@ -74,4 +76,81 @@ export function mergeNotified(notified: string[], snapshot: Pick<ShowSnapshot, '
   const latest = snapshot.latestSeason;
   const reopened = latest.kind === 'airing' ? `complete:${latest.seasonNumber}` : null;
   return Array.from(new Set([...notified, ...alertKeys(snapshot)])).filter((key) => key !== reopened);
+}
+
+export function deliveryTime(airDate: string): Date {
+  return setHours(startOfDay(addDays(parseISO(airDate), 1)), DELIVERY_HOUR);
+}
+
+export function plannedAlerts(snapshot: ShowSnapshot, notified: string[], now: Date = new Date()): PlannedAlert[] {
+  const latest = snapshot.latestSeason;
+  const name = snapshot.name;
+  const planned: PlannedAlert[] = [];
+
+  function plan(keys: string[], airDate: string, title: string, body: (fireAt: Date) => string) {
+    if (keys.some((key) => notified.includes(key))) return;
+    const fireAt = deliveryTime(airDate);
+    if (Number.isNaN(fireAt.getTime()) || fireAt <= now) return;
+    planned.push({ keys, showId: snapshot.id, title, body: body(fireAt), fireAt: fireAt.toISOString() });
+  }
+
+  if (latest.kind === 'upcoming' && latest.premiereDate) {
+    const season = latest.seasonNumber;
+    const finale = latest.finaleConfirmed && latest.finaleDate ? latest.finaleDate : null;
+    const episodes = latest.episodeCount ? ` (${episodesText(latest.episodeCount, null)})` : '';
+    if (finale && dropsAtOnce(latest.premiereDate, finale)) {
+      plan(
+        [`premiere:${season}`, `complete:${season}`],
+        finale,
+        `${name}: all of Season ${season} is out`,
+        () => `The whole season dropped at once${episodes}. Ready to binge.`,
+      );
+    } else {
+      plan(
+        [`premiere:${season}`],
+        latest.premiereDate,
+        `${name}: Season ${season} has started`,
+        (fireAt) =>
+          `${finaleText(latest.finaleDate ?? null, fireAt)} You'll get another notification when the whole season is out.`,
+      );
+      if (finale) {
+        plan(
+          [`complete:${season}`],
+          finale,
+          `${name}: Season ${season} is complete`,
+          () => `The finale aired yesterday, so all episodes are out${episodes}. Ready to binge.`,
+        );
+      }
+    }
+  }
+
+  if (latest.kind === 'airing' && latest.finaleConfirmed && latest.finaleDate) {
+    const season = latest.seasonNumber;
+    const episodes = latest.episodeCount ? ` (${episodesText(latest.episodeCount, null)})` : '';
+    plan(
+      [`complete:${season}`],
+      latest.finaleDate,
+      `${name}: Season ${season} is complete`,
+      () => `The finale aired yesterday, so all episodes are out${episodes}. Ready to binge.`,
+    );
+  }
+
+  return planned;
+}
+
+export function deliveredKeys(planned: PlannedAlert[] | undefined, now: Date = new Date()): string[] {
+  return (planned ?? []).filter((alert) => Date.parse(alert.fireAt) <= now.getTime()).flatMap((alert) => alert.keys);
+}
+
+export function nextPlannedAlert(shows: Pick<FollowedShow, 'planned'>[], now: Date = new Date()): PlannedAlert | null {
+  const upcoming = shows
+    .flatMap((show) => show.planned ?? [])
+    .filter((alert) => Date.parse(alert.fireAt) > now.getTime())
+    .sort((a, b) => Date.parse(a.fireAt) - Date.parse(b.fireAt));
+  return upcoming[0] ?? null;
+}
+
+export function nextAlertText(alert: PlannedAlert | null): string {
+  if (!alert) return 'No notifications scheduled yet.';
+  return `Next: ${alert.title}, ${format(new Date(alert.fireAt), "EEE, MMM d 'at' HH:mm")}.`;
 }

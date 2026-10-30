@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
-import { mergeNotified, pendingAlerts, type ShowAlert } from '@/lib/alerts';
-import { presentAlerts } from '@/lib/notifications';
+import { deliveredKeys, mergeNotified, pendingAlerts, plannedAlerts, type ShowAlert } from '@/lib/alerts';
+import { presentAlerts, syncScheduledAlerts } from '@/lib/notifications';
 import { load, save } from '@/lib/storage';
 import { fetchSnapshot } from '@/lib/tmdb';
 import type { FollowedShow, PersistedState, ShowSnapshot } from '@/lib/types';
@@ -24,6 +24,10 @@ function persist(shows: FollowedShow[]) {
   void save({ version: 1, shows });
 }
 
+function schedule(shows: FollowedShow[]) {
+  void syncScheduledAlerts(shows);
+}
+
 export const useWatchlist = create<WatchlistState>((set, get) => ({
   shows: [],
   hydrated: false,
@@ -36,22 +40,26 @@ export const useWatchlist = create<WatchlistState>((set, get) => ({
 
   follow: (snapshot) => {
     if (get().shows.some((show) => show.id === snapshot.id)) return;
+    const notified = mergeNotified([], snapshot);
     const followed: FollowedShow = {
       id: snapshot.id,
       followedAt: new Date().toISOString(),
       snapshot,
       seenSeasons: [],
-      notified: mergeNotified([], snapshot),
+      notified,
+      planned: plannedAlerts(snapshot, notified),
     };
     const shows = [...get().shows, followed];
     set({ shows });
     persist(shows);
+    schedule(shows);
   },
 
   unfollow: (id) => {
     const shows = get().shows.filter((show) => show.id !== id);
     set({ shows });
     persist(shows);
+    schedule(shows);
   },
 
   setSeen: (id, seasonNumber, seen) => {
@@ -87,8 +95,10 @@ export const useWatchlist = create<WatchlistState>((set, get) => ({
   },
 
   replaceAll: (next) => {
-    set({ shows: next.shows });
-    persist(next.shows);
+    const shows = next.shows.map((show) => ({ ...show, planned: plannedAlerts(show.snapshot, show.notified) }));
+    set({ shows });
+    persist(shows);
+    schedule(shows);
   },
 
   refreshAll: async () => {
@@ -105,12 +115,15 @@ export const useWatchlist = create<WatchlistState>((set, get) => ({
       const shows = get().shows.map((show) => {
         const snapshot = fresh.get(show.id);
         if (!snapshot) return show;
-        alerts.push(...pendingAlerts(snapshot, show.notified, now));
-        return { ...show, snapshot, notified: mergeNotified(show.notified, snapshot) };
+        const notified = Array.from(new Set([...show.notified, ...deliveredKeys(show.planned, now)]));
+        alerts.push(...pendingAlerts(snapshot, notified, now));
+        const nextNotified = mergeNotified(notified, snapshot);
+        return { ...show, snapshot, notified: nextNotified, planned: plannedAlerts(snapshot, nextNotified, now) };
       });
       set({ shows });
       persist(shows);
       await presentAlerts(alerts).catch(() => {});
+      await syncScheduledAlerts(shows, now);
       return alerts;
     } finally {
       set({ refreshing: false });

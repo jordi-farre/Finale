@@ -1,14 +1,19 @@
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Linking, ScrollView, View } from 'react-native';
 import { Appbar, Button, SegmentedButtons, Switch, Text, useTheme } from 'react-native-paper';
 
 import { BackupSection } from '@/components/BackupSection';
 import { useNotificationPermission } from '@/hooks/use-notification-permission';
+import { nextAlertText, nextPlannedAlert } from '@/lib/alerts';
+import { lastCheckText, readLastBackgroundRefresh } from '@/lib/backgroundRefresh';
+import { syncScheduledAlerts } from '@/lib/notifications';
 import { versionLabel } from '@/lib/version';
 import { useAlertSettings } from '@/store/useAlertSettings';
 import { useThemePreference, type ThemePreference } from '@/store/useThemePreference';
+import { useWatchlist } from '@/store/useWatchlist';
 
 function currentVersionLabel(): string {
   const buildProfile = Constants.expoConfig?.extra?.buildProfile;
@@ -26,9 +31,22 @@ export default function SettingsScreen() {
   const alertsEnabled = useAlertSettings((state) => state.enabled);
   const setAlertsEnabled = useAlertSettings((state) => state.setEnabled);
   const notifications = useNotificationPermission();
+  const shows = useWatchlist((state) => state.shows);
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void readLastBackgroundRefresh().then((date) => {
+      if (active) setLastCheck(date);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function handleToggleAlerts(enabled: boolean) {
     setAlertsEnabled(enabled);
+    void syncScheduledAlerts(useWatchlist.getState().shows);
     if (enabled) void notifications.request();
   }
 
@@ -74,6 +92,17 @@ export default function SettingsScreen() {
               <Button textColor={theme.colors.onErrorContainer} onPress={() => void Linking.openSettings()}>
                 Open Settings
               </Button>
+            </View>
+          ) : null}
+
+          {alertsEnabled ? (
+            <View className="gap-xs">
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                {nextAlertText(nextPlannedAlert(shows))}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                {lastCheckText(lastCheck)}
+              </Text>
             </View>
           ) : null}
         </View>

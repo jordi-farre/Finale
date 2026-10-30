@@ -4,8 +4,10 @@ import { AppState } from 'react-native';
 import {
   getNotificationPermissionStatus,
   requestNotificationPermission,
+  syncScheduledAlerts,
   type NotificationPermissionStatus,
 } from '@/lib/notifications';
+import { useWatchlist } from '@/store/useWatchlist';
 
 export function useNotificationPermission() {
   const [status, setStatus] = useState<NotificationPermissionStatus>('undetermined');
@@ -32,6 +34,7 @@ export function useNotificationPermission() {
   const request = useCallback(async () => {
     const next = await requestNotificationPermission().catch(() => 'undetermined' as const);
     setStatus(next);
+    if (next === 'granted') void syncScheduledAlerts(useWatchlist.getState().shows);
     return next;
   }, []);
 

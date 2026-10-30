@@ -1,6 +1,12 @@
 import * as TaskManager from 'expo-task-manager';
 
-import { BACKGROUND_REFRESH_TASK, registerBackgroundRefresh, runBackgroundRefresh } from '@/lib/backgroundRefresh';
+import {
+  BACKGROUND_REFRESH_TASK,
+  lastCheckText,
+  readLastBackgroundRefresh,
+  registerBackgroundRefresh,
+  runBackgroundRefresh,
+} from '@/lib/backgroundRefresh';
 import { useWatchlist } from '@/store/useWatchlist';
 
 jest.mock('expo-background-task', () => ({
@@ -27,9 +33,24 @@ describe('background refresh', () => {
     expect(refreshAll).toHaveBeenCalled();
   });
 
-  it('reports failure instead of throwing', async () => {
+  it('remembers when it last ran', async () => {
+    expect(await readLastBackgroundRefresh()).toBeNull();
+    useWatchlist.setState({ hydrated: true, refreshAll: jest.fn().mockResolvedValue([]) });
+    const before = Date.now();
+    await runBackgroundRefresh();
+    expect((await readLastBackgroundRefresh())?.getTime()).toBeGreaterThanOrEqual(before);
+  });
+
+  it('reports failure instead of throwing, without counting it as a check', async () => {
     useWatchlist.setState({ hydrated: true, refreshAll: jest.fn().mockRejectedValue(new Error('offline')) });
     expect(await runBackgroundRefresh()).toBe(2);
+    expect(await readLastBackgroundRefresh()).toBeNull();
+  });
+
+  it('describes the last check for Settings', () => {
+    const now = new Date(2026, 9, 30, 12);
+    expect(lastCheckText(new Date(2026, 9, 30, 9), now)).toBe('Last background check: about 3 hours ago.');
+    expect(lastCheckText(null, now)).toBe("Background check hasn't run yet.");
   });
 
   it('registers the task every six hours', async () => {

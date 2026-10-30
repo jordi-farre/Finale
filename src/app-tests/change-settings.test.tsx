@@ -3,6 +3,8 @@ import * as Notifications from 'expo-notifications';
 
 import SettingsScreen from '@/app/settings';
 import { ALERT_SETTINGS_STORAGE_KEY_FOR_TESTS, useAlertSettings } from '@/store/useAlertSettings';
+import { useWatchlist } from '@/store/useWatchlist';
+import { followed } from '@/test-utils/fixtures';
 import { THEME_STORAGE_KEY_FOR_TESTS, useThemePreference } from '@/store/useThemePreference';
 import { fireEvent, render, screen, waitFor } from '@/test-utils/render';
 
@@ -41,6 +43,38 @@ describe('changing settings', () => {
     permissions.mockResolvedValue({ granted: false, canAskAgain: false } as Notifications.NotificationPermissionsStatus);
     await render(<SettingsScreen />);
     expect(await screen.findByText('Blocked in system settings')).toBeOnTheScreen();
+  });
+
+  it('shows the next scheduled notification and when the background check last ran', async () => {
+    const fireAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    fireAt.setHours(10, 0, 0, 0);
+    useWatchlist.setState({
+      shows: [
+        followed(
+          { id: 1 },
+          {
+            planned: [
+              { keys: ['premiere:3'], showId: 1, title: 'Severance: Season 3 has started', body: '', fireAt: fireAt.toISOString() },
+            ],
+          },
+        ),
+      ],
+    });
+    await AsyncStorage.setItem('finale:last-background-refresh', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString());
+    await render(<SettingsScreen />);
+    expect(screen.getByText(/^Next: Severance: Season 3 has started, .+ at 10:00\.$/)).toBeOnTheScreen();
+    expect(await screen.findByText('Last background check: about 2 hours ago.')).toBeOnTheScreen();
+  });
+
+  it('cancels scheduled notifications when you turn them off', async () => {
+    const cancelAll = jest.mocked(Notifications.cancelAllScheduledNotificationsAsync);
+    cancelAll.mockClear();
+    await render(<SettingsScreen />);
+    expect(screen.getByText('No notifications scheduled yet.')).toBeOnTheScreen();
+    await fireEvent(screen.getByLabelText('Season notifications'), 'valueChange', false);
+    await waitFor(() => expect(cancelAll).toHaveBeenCalled());
+    expect(jest.mocked(Notifications.scheduleNotificationAsync)).not.toHaveBeenCalled();
+    expect(screen.queryByText('No notifications scheduled yet.')).toBeNull();
   });
 
   it('shows the app version', async () => {

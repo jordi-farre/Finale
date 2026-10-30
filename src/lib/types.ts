@@ -14,8 +14,16 @@ export type SeasonState =
       airedCount: number;
       episodeCount: number | null;
       finaleDate: string | null;
+      finaleConfirmed?: boolean;
     }
-  | { kind: 'upcoming'; seasonNumber: number; premiereDate: string | null }
+  | {
+      kind: 'upcoming';
+      seasonNumber: number;
+      premiereDate: string | null;
+      episodeCount?: number | null;
+      finaleDate?: string | null;
+      finaleConfirmed?: boolean;
+    }
   | { kind: 'none' };
 
 export type SeasonInfo = {
@@ -52,6 +60,15 @@ export type FollowedShow = {
   snapshot: ShowSnapshot;
   seenSeasons: number[];
   notified: string[];
+  planned?: PlannedAlert[];
+};
+
+export type PlannedAlert = {
+  keys: string[];
+  showId: number;
+  title: string;
+  body: string;
+  fireAt: string;
 };
 
 export type PersistedState = {

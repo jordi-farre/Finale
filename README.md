@@ -36,7 +36,8 @@
   often empty, so seasons other than the current one are estimated from the current season's
   average episode runtime. The watchlist sticks to episode counts.
 - **Settings**: system / light / dark theme, a switch for season notifications (with a pointer to
-  system settings when Android blocks them), and the app version (`Finale 1.2.0`; preview builds add their build number,
+  system settings when Android blocks them, the next scheduled notification, and when the
+  background check last ran), and the app version (`Finale 1.2.0`; preview builds add their build number,
   `Finale 1.2.0 · preview 23`).
 - **Backup** (Settings), same as Punch's: export everything (followed shows, their last known
   details, seen seasons, and which alerts were already sent) to a JSON file and share it wherever
@@ -208,9 +209,20 @@ keeps the previous data.
 
 There's no push server. The app checks TMDB itself and posts local notifications
 ([`src/lib/alerts.ts`](src/lib/alerts.ts) decides what to say,
-[`src/lib/notifications.ts`](src/lib/notifications.ts) shows it):
+[`src/lib/notifications.ts`](src/lib/notifications.ts) shows and schedules it):
 
-- **When**: on every launch, when the app comes back to the foreground after 30+ minutes, and in
+- **Scheduled ahead**: Android postpones background work for apps you rarely open, so relying on
+  the refresh alone meant notifications only arrived after opening the app. Whenever the app
+  knows the dates, it schedules the notification in advance with an alarm, which Android delivers
+  even if the app never runs again and restores after a reboot: a season's premiere, and its finale
+  when TMDB marks the last episode as the finale or the whole season is dated to drop at once.
+  They go off at 10:00 local time the morning after the air date, when a US evening episode is out
+  everywhere. Each show keeps its planned notifications, so a refresh that later finds the same
+  news doesn't repeat one that already went off, and every refresh, follow, unfollow, import and
+  settings change cancels and reschedules them, which picks up moved dates. Cancellations and
+  seasons without a confirmed finale still need a refresh. Without the exact-alarm permission,
+  Android may deliver a few minutes late, which costs no extra battery.
+- **When it refreshes**: on every launch, when the app comes back to the foreground after 30+ minutes, and in
   the background via [`expo-background-task`](https://docs.expo.dev/versions/v57.0.0/sdk/background-task/)
   roughly every 6 hours ([`src/lib/backgroundRefresh.ts`](src/lib/backgroundRefresh.ts)).
   Android's WorkManager runs it only with network and enough battery, so timing is approximate.

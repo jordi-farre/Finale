@@ -58,6 +58,10 @@ function daysBetween(from: string, to: string): number {
   return differenceInCalendarDays(parseISO(to), parseISO(from));
 }
 
+export function dropsAtOnce(premiereDate: string, finaleDate: string): boolean {
+  return daysBetween(premiereDate, finaleDate) <= DROP_SPAN_DAYS;
+}
+
 function looksFinished(
   episodes: TmdbSeasonDetails['episodes'],
   status: ShowStatus,
@@ -72,6 +76,19 @@ function looksFinished(
   return last.air_date !== null && daysBetween(last.air_date, today) > QUIET_DAYS_BEFORE_COMPLETE;
 }
 
+function finaleConfirmed(episodes: TmdbSeasonDetails['episodes']): boolean {
+  const first = episodes[0];
+  const last = episodes[episodes.length - 1];
+  if (!first || !last?.air_date || last.episode_type === 'mid_season') return false;
+  if (last.episode_type === 'finale') return true;
+  return (
+    episodes.length > 1 &&
+    episodes.every((episode) => episode.air_date !== null) &&
+    first.air_date !== null &&
+    dropsAtOnce(first.air_date, last.air_date)
+  );
+}
+
 export function seasonState(
   season: TmdbSeasonDetails | null,
   details: Pick<TmdbShowDetails, 'next_episode_to_air' | 'episode_run_time' | 'status'>,
@@ -84,7 +101,14 @@ export function seasonState(
   const aired = episodes.filter((episode) => episode.air_date !== null && episode.air_date <= today);
 
   if (aired.length === 0) {
-    return { kind: 'upcoming', seasonNumber, premiereDate: episodes[0]?.air_date ?? season.air_date };
+    return {
+      kind: 'upcoming',
+      seasonNumber,
+      premiereDate: episodes[0]?.air_date ?? season.air_date,
+      episodeCount: episodes.length > 0 ? episodes.length : null,
+      finaleDate: episodes[episodes.length - 1]?.air_date ?? null,
+      finaleConfirmed: finaleConfirmed(episodes),
+    };
   }
 
   const next = details.next_episode_to_air;
@@ -115,6 +139,7 @@ export function seasonState(
     airedCount: aired.length,
     episodeCount: allListedAired ? null : episodes.length,
     finaleDate: allListedAired ? null : (lastEpisode.air_date ?? null),
+    finaleConfirmed: !allListedAired && lastEpisode.air_date !== null && lastEpisode.episode_type === 'finale',
   };
 }
 

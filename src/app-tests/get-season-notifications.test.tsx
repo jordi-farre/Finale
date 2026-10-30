@@ -1,8 +1,11 @@
+import { addDays } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 
 import RootLayout from '@/app/_layout';
 import ShowScreen from '@/app/show/[id]';
+import { deliveryTime } from '@/lib/alerts';
+import { toIsoDate } from '@/lib/shows';
 import { fetchSnapshot } from '@/lib/tmdb';
 import type { SeasonState } from '@/lib/types';
 import { useAlertSettings } from '@/store/useAlertSettings';
@@ -24,6 +27,7 @@ jest.mock('@/lib/tmdb', () => ({ ...jest.requireActual('@/lib/tmdb'), fetchSnaps
 
 const fetchSnapshotMock = jest.mocked(fetchSnapshot);
 const schedule = jest.mocked(Notifications.scheduleNotificationAsync);
+const cancelAll = jest.mocked(Notifications.cancelAllScheduledNotificationsAsync);
 
 const upcoming: SeasonState = { kind: 'upcoming', seasonNumber: 3, premiereDate: '2026-10-10' };
 const airing: SeasonState = { kind: 'airing', seasonNumber: 3, airedCount: 1, episodeCount: 8, finaleDate: '2026-11-25' };
@@ -50,12 +54,30 @@ async function refresh() {
   });
 }
 
+type Request = Notifications.NotificationRequestInput;
+
+function isAhead(request: Request): boolean {
+  return typeof request.trigger === 'object' && request.trigger !== null && 'date' in request.trigger;
+}
+
 function notificationTitles() {
-  return schedule.mock.calls.map(([request]) => request.content.title);
+  return schedule.mock.calls.filter(([request]) => !isAhead(request)).map(([request]) => request.content.title);
+}
+
+function scheduledAhead() {
+  const lastCancel = Math.max(0, ...cancelAll.mock.invocationCallOrder);
+  return schedule.mock.calls
+    .filter(([request], index) => isAhead(request) && schedule.mock.invocationCallOrder[index] > lastCancel)
+    .map(([request]) => ({ title: request.content.title, date: (request.trigger as { date: Date }).date }));
+}
+
+function inDays(days: number): string {
+  return toIsoDate(addDays(new Date(), days));
 }
 
 beforeEach(() => {
   schedule.mockClear();
+  cancelAll.mockClear();
   jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue({
     granted: true,
     canAskAgain: true,
@@ -121,6 +143,70 @@ describe('getting season notifications', () => {
     tmdbReturns(airing);
     await refresh();
     expect(schedule).not.toHaveBeenCalled();
+  });
+
+  describe('scheduled ahead of time, so they arrive without opening the app', () => {
+    const premiere = inDays(10);
+    const finale = inDays(40);
+    const announced: SeasonState = {
+      kind: 'upcoming',
+      seasonNumber: 3,
+      premiereDate: premiere,
+      episodeCount: 8,
+      finaleDate: finale,
+      finaleConfirmed: true,
+    };
+
+    it('schedules the premiere and the confirmed finale when you follow', async () => {
+      tmdbReturns(announced);
+      await followFromShowPage();
+      await waitFor(() =>
+        expect(scheduledAhead()).toEqual([
+          { title: 'Severance: Season 3 has started', date: deliveryTime(premiere) },
+          { title: 'Severance: Season 3 is complete', date: deliveryTime(finale) },
+        ]),
+      );
+    });
+
+    it("doesn't repeat a scheduled notification once it has gone off", async () => {
+      tmdbReturns(announced);
+      await followFromShowPage();
+      await waitFor(() => expect(scheduledAhead()).toHaveLength(2));
+
+      jest.useFakeTimers({ advanceTimers: true });
+      try {
+        jest.setSystemTime(addDays(new Date(), 12));
+        tmdbReturns({ kind: 'airing', seasonNumber: 3, airedCount: 1, episodeCount: 8, finaleDate: finale, finaleConfirmed: true });
+        await refresh();
+        expect(notificationTitles()).toEqual([]);
+        expect(scheduledAhead().map((alert) => alert.title)).toEqual(['Severance: Season 3 is complete']);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('reschedules when the finale moves', async () => {
+      tmdbReturns(announced);
+      await followFromShowPage();
+      const delayed = inDays(47);
+      tmdbReturns({ ...announced, finaleDate: delayed });
+      await refresh();
+      expect(scheduledAhead().map((alert) => alert.date)).toEqual([deliveryTime(premiere), deliveryTime(delayed)]);
+    });
+
+    it('drops them when you unfollow', async () => {
+      tmdbReturns(announced);
+      await followFromShowPage();
+      await waitFor(() => expect(scheduledAhead()).toHaveLength(2));
+      await fireEvent.press(screen.getByText('Following'));
+      await waitFor(() => expect(scheduledAhead()).toEqual([]));
+    });
+
+    it('waits for a refresh when the finale is not confirmed', async () => {
+      tmdbReturns({ ...announced, finaleConfirmed: false });
+      await followFromShowPage();
+      await waitFor(() => expect(scheduledAhead().map((alert) => alert.title)).toEqual(['Severance: Season 3 has started']));
+    });
   });
 
   it('opens the show when you tap a notification', async () => {

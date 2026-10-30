@@ -90,6 +90,7 @@ describe('seasonState', () => {
       airedCount: 4,
       episodeCount: null,
       finaleDate: null,
+      finaleConfirmed: false,
     });
   });
 
@@ -116,7 +117,13 @@ describe('seasonState', () => {
       airedCount: 2,
       episodeCount: 4,
       finaleDate: '2026-10-14',
+      finaleConfirmed: false,
     });
+  });
+
+  it('confirms the finale date when TMDB marks the last episode as the finale', () => {
+    const state = seasonState(seasonDetails(3, ['2026-09-16', '2026-09-23', '2026-10-14'], 50, 'finale'), details, NOW);
+    expect(state).toMatchObject({ kind: 'airing', finaleDate: '2026-10-14', finaleConfirmed: true });
   });
 
   it('is airing with an unknown finale when later episodes have no date yet', () => {
@@ -133,6 +140,7 @@ describe('seasonState', () => {
       airedCount: 2,
       episodeCount: null,
       finaleDate: null,
+      finaleConfirmed: false,
     });
   });
 
@@ -145,11 +153,45 @@ describe('seasonState', () => {
 
   it('is upcoming when nothing has aired', () => {
     const state = seasonState(seasonDetails(4, ['2027-01-10', '2027-01-17']), details, NOW);
-    expect(state).toEqual({ kind: 'upcoming', seasonNumber: 4, premiereDate: '2027-01-10' });
+    expect(state).toEqual({
+      kind: 'upcoming',
+      seasonNumber: 4,
+      premiereDate: '2027-01-10',
+      episodeCount: 2,
+      finaleDate: '2027-01-17',
+      finaleConfirmed: false,
+    });
+  });
+
+  it('confirms an upcoming finale marked by TMDB', () => {
+    const state = seasonState(seasonDetails(4, ['2027-01-10', '2027-01-17'], 50, 'finale'), details, NOW);
+    expect(state).toMatchObject({ kind: 'upcoming', finaleDate: '2027-01-17', finaleConfirmed: true });
+  });
+
+  it('confirms an upcoming season that drops all at once', () => {
+    const state = seasonState(seasonDetails(4, Array(6).fill('2027-01-10')), details, NOW);
+    expect(state).toMatchObject({ kind: 'upcoming', episodeCount: 6, finaleDate: '2027-01-10', finaleConfirmed: true });
+  });
+
+  it('does not take a lone announced episode for a whole season', () => {
+    const state = seasonState(seasonDetails(4, ['2027-01-10']), details, NOW);
+    expect(state).toMatchObject({ kind: 'upcoming', finaleConfirmed: false });
+  });
+
+  it('does not confirm a finale while some episodes have no date', () => {
+    const state = seasonState(seasonDetails(4, ['2027-01-10', null, '2027-01-11']), details, NOW);
+    expect(state).toMatchObject({ kind: 'upcoming', finaleConfirmed: false });
   });
 
   it('is upcoming with no date when the season has no episodes listed', () => {
-    expect(seasonState(seasonDetails(4, []), details, NOW)).toEqual({ kind: 'upcoming', seasonNumber: 4, premiereDate: null });
+    expect(seasonState(seasonDetails(4, []), details, NOW)).toEqual({
+      kind: 'upcoming',
+      seasonNumber: 4,
+      premiereDate: null,
+      episodeCount: null,
+      finaleDate: null,
+      finaleConfirmed: false,
+    });
   });
 
   it('is none without season data', () => {

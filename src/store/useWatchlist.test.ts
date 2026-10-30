@@ -7,7 +7,10 @@ import { useWatchlist } from '@/store/useWatchlist';
 import { followed, season, snapshot } from '@/test-utils/fixtures';
 
 jest.mock('@/lib/tmdb', () => ({ ...jest.requireActual('@/lib/tmdb'), fetchSnapshot: jest.fn() }));
-jest.mock('@/lib/notifications', () => ({ presentAlerts: jest.fn().mockResolvedValue(undefined) }));
+jest.mock('@/lib/notifications', () => ({
+  presentAlerts: jest.fn().mockResolvedValue(undefined),
+  syncScheduledAlerts: jest.fn().mockResolvedValue(undefined),
+}));
 
 const fetchSnapshotMock = jest.mocked(fetchSnapshot);
 const presentAlertsMock = jest.mocked(presentAlerts);
